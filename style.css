@@ -1348,3 +1348,127 @@ select:focus-visible {
     padding: 10px;
   }
 }
+
+
+/* =========================================================
+   Configuration panel — truly collapsed by default
+   ========================================================= */
+.configuration-details {
+  margin: 24px 0 0;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: rgba(8, 15, 28, 0.62);
+  box-shadow: 0 12px 34px rgba(2, 6, 23, 0.16);
+  overflow: hidden;
+}
+
+.configuration-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 16px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.configuration-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.configuration-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.configuration-summary-left strong {
+  display: block;
+  color: #f8fafc;
+  font-size: .92rem;
+  font-weight: 900;
+  letter-spacing: -.012em;
+}
+
+.configuration-summary-left small {
+  display: block;
+  margin-top: 3px;
+  color: #7f8da6;
+  font-size: .73rem;
+  line-height: 1.45;
+}
+
+.configuration-summary-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.config-state {
+  padding: 4px 8px;
+  border: 1px solid rgba(148,163,184,.16);
+  border-radius: 999px;
+  color: #94a3b8;
+  background: rgba(15,23,42,.58);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.config-chevron {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(148,163,184,.14);
+  border-radius: 9px;
+  color: #94a3b8;
+  background: rgba(15,23,42,.5);
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform .16s ease, background .16s ease;
+}
+
+.configuration-details:not([open]) > .configuration-details-body {
+  display: none !important;
+}
+
+.configuration-details[open] > .configuration-details-body {
+  display: block !important;
+  padding: 14px;
+  border-top: 1px solid rgba(148,163,184,.10);
+  background: rgba(2,6,23,.18);
+}
+
+.configuration-details[open] .config-chevron {
+  transform: rotate(180deg);
+  background: rgba(59,130,246,.10);
+  color: #bfdbfe;
+}
+
+@media (max-width: 560px) {
+  .configuration-details > summary {
+    align-items: flex-start;
+    padding: 13px;
+  }
+
+  .configuration-summary-left {
+    align-items: flex-start;
+  }
+
+  .configuration-summary-left small {
+    max-width: 235px;
+  }
+
+  .config-state {
+    display: none;
+  }
+
+  .configuration-details[open] > .configuration-details-body {
+    padding: 10px;
+  }
+}
