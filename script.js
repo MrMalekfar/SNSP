@@ -829,7 +829,7 @@ async function buildAdvancedConfig(parsed) {
       security: "tls",
       tlsSettings: {
         allowInsecure: false,
-        alpn: parsed.alpn.length ? parsed.alpn : ["http/1.1"],
+        alpn: alpn: ["http/1.1"],//parsed.alpn.length ? parsed.alpn : ["http/1.1"],
         fingerprint: ADVANCED_FINGERPRINT,
         serverName: parsed.sni,
         cipherSuites: ADVANCED_CIPHER_SUITES,
