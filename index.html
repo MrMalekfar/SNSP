@@ -11,137 +11,177 @@
   <main class="container">
     <header class="hero">
       <div>
-        <p class="eyebrow">GitHub Pages · Client-side only</p>
+        <p class="eyebrow">CLIENT-SIDE TOOL · NO UPLOAD</p>
         <h1>VLESS → JSON Converter</h1>
         <p class="subtitle">
-          Paste a <code>vless://</code> link and generate the JSON configuration
-          from your template. Nothing is uploaded to a server.
+          Turn a <code>vless://</code> link into ready-to-use Xray and V2Box JSON configurations.
+          Everything runs locally in your browser.
         </p>
       </div>
-      <button id="sampleBtn" class="secondary" type="button">Load sample</button>
+      <button id="sampleBtn" class="secondary hero-action" type="button">Load sample</button>
     </header>
 
-    <section class="card">
+    <section class="card input-card workflow-card">
+      <div class="step-heading">
+        <span class="step-number">01</span>
+        <div>
+          <div class="step-title">Input</div>
+          <div class="step-copy">Paste your VLESS link to start the conversion.</div>
+        </div>
+      </div>
       <label for="vlessInput">VLESS URL</label>
       <textarea id="vlessInput" rows="2" spellcheck="false" placeholder="vless://UUID@host:443?type=ws&security=tls&path=%2F...&host=example.com&sni=example.com#Remark"></textarea>
       <div class="row">
         <span id="status" class="status" aria-live="polite"></span>
-        <button id="generateBtn" class="primary" type="button">Generate JSON</button>
+        <button id="generateBtn" class="primary generate-btn" type="button">Generate JSON</button>
       </div>
     </section>
 
-    <section class="grid">
-      <div class="card">
-        <div class="section-head">
-          <div>
-            <h2>Template options</h2>
-            <p>These values are added to the generated config.</p>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <label>
-            Local proxy address
-            <input id="proxyAddress" value="127.0.0.1" />
-          </label>
-          <label>
-            Local proxy starting port
-            <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
-          </label>
-          <div class="field-note">
-            <span>Outbound source</span>
-            <strong>list.json (GitHub repository)</strong>
-          </div>
-          <label>
-            Log level
-            <select id="logLevel">
-              <option value="warning" selected>warning</option>
-              <option value="info">info</option>
-              <option value="debug">debug</option>
-              <option value="error">error</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="section-head subhead">
-          <div>
-            <h2>Outbounds from list.json</h2>
-            <p>Every entry in <code>list.json</code> becomes one outbound. The page does not use manually entered SNI/IP values.</p>
-          </div>
-        </div>
-        <div id="outboundRows" class="outbound-rows"></div>
-
-        <div class="section-head subhead">
-          <div>
-            <h2>Burst Observatory</h2>
-            <p>Xray probes every outbound whose tag starts with the selector.</p>
-          </div>
-        </div>
-        <div class="form-grid">
-          <label>
-            Subject selector
-            <input id="observatorySelector" value="AutoOut_" />
-          </label>
-          <label>
-            Destination
-            <input id="observatoryDestination" value="http://edge.microsoft.com/captiveportal/generate_204" />
-          </label>
-          <label>
-            Connectivity
-            <input id="observatoryConnectivity" value="" />
-          </label>
-          <label>
-            Interval
-            <input id="observatoryInterval" value="20m" />
-          </label>
-          <label>
-            Sampling
-            <input id="observatorySampling" type="number" min="1" value="3" />
-          </label>
-          <label>
-            Timeout
-            <input id="observatoryTimeout" value="3s" />
-          </label>
-          <label>
-            HTTP method
-            <select id="observatoryHttpMethod">
-              <option value="HEAD" selected>HEAD</option>
-              <option value="GET">GET</option>
-            </select>
-          </label>
+    <section class="workflow-section">
+      <div class="section-banner">
+        <span class="step-number">02</span>
+        <div>
+          <div class="step-title">Configuration</div>
+          <div class="step-copy">Review the detected VLESS values, then adjust the template only where needed.</div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="section-head">
-          <div>
-            <h2>Detected VLESS fields</h2>
-            <p>Populated after parsing.</p>
+      <div class="grid">
+        <div class="card detected-card">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow local-eyebrow">PARSED DATA</div>
+              <h2>Detected VLESS fields</h2>
+              <p>Values populated after parsing the link. Keep them as-is unless you need a manual correction.</p>
+            </div>
+            <span class="badge">Inspector</span>
+          </div>
+          <div id="fields" class="fields" aria-live="polite">
+            <label>UUID<input id="fieldUuid" data-field="uuid" value="" /></label>
+            <label>Address<input id="fieldAddress" data-field="address" value="" /></label>
+            <label>Port<input id="fieldPort" data-field="port" type="number" min="1" max="65535" value="443" /></label>
+            <label>Transport<input id="fieldTransport" data-field="transport" value="tcp" /></label>
+            <label>Security<input id="fieldSecurity" data-field="security" value="none" /></label>
+            <label>SNI<input id="fieldSni" data-field="sni" value="" /></label>
+            <label>WS Host<input id="fieldWsHost" data-field="wsHost" value="" /></label>
+            <label>WS Path<input id="fieldWsPath" data-field="wsPath" value="/" /></label>
+            <label>Remark<input id="fieldRemark" data-field="remark" value="" /></label>
           </div>
         </div>
-        <div id="fields" class="fields" aria-live="polite">
-          <label>UUID<input id="fieldUuid" data-field="uuid" value="" /></label>
-          <label>Address<input id="fieldAddress" data-field="address" value="" /></label>
-          <label>Port<input id="fieldPort" data-field="port" type="number" min="1" max="65535" value="443" /></label>
-          <label>Transport<input id="fieldTransport" data-field="transport" value="tcp" /></label>
-          <label>Security<input id="fieldSecurity" data-field="security" value="none" /></label>
-          <label>SNI<input id="fieldSni" data-field="sni" value="" /></label>
-          <label>WS Host<input id="fieldWsHost" data-field="wsHost" value="" /></label>
-          <label>WS Path<input id="fieldWsPath" data-field="wsPath" value="/" /></label>
-          <label>Remark<input id="fieldRemark" data-field="remark" value="" /></label>
+
+        <div class="card template-card">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow local-eyebrow">TEMPLATE</div>
+              <h2>Template options</h2>
+              <p>These values are added to the generated configuration.</p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              Local proxy address
+              <input id="proxyAddress" value="127.0.0.1" />
+            </label>
+            <label>
+              Local proxy starting port
+              <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
+            </label>
+            <div class="field-note">
+              <span>Outbound source</span>
+              <strong>list.json · repository</strong>
+            </div>
+            <label>
+              Log level
+              <select id="logLevel">
+                <option value="warning" selected>warning</option>
+                <option value="info">info</option>
+                <option value="debug">debug</option>
+                <option value="error">error</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="section-head subhead">
+            <div>
+              <div class="eyebrow local-eyebrow">OUTBOUND SOURCES</div>
+              <h2>Outbounds from list.json</h2>
+              <p>Each entry becomes one outbound. SNI/IP values are loaded from <code>list.json</code>.</p>
+            </div>
+            <span class="badge">List-driven</span>
+          </div>
+          <div id="outboundRows" class="outbound-rows"></div>
+
+          <details class="advanced-options">
+            <summary>
+              <span>Advanced options</span>
+              <span class="summary-meta">Burst Observatory</span>
+            </summary>
+            <div class="details-body">
+              <div class="section-head subhead">
+                <div>
+                  <h2>Burst Observatory</h2>
+                  <p>Xray probes every outbound whose tag starts with the selector.</p>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>
+                  Subject selector
+                  <input id="observatorySelector" value="AutoOut_" />
+                </label>
+                <label>
+                  Destination
+                  <input id="observatoryDestination" value="http://edge.microsoft.com/captiveportal/generate_204" />
+                </label>
+                <label>
+                  Connectivity
+                  <input id="observatoryConnectivity" value="" />
+                </label>
+                <label>
+                  Interval
+                  <input id="observatoryInterval" value="20m" />
+                </label>
+                <label>
+                  Sampling
+                  <input id="observatorySampling" type="number" min="1" value="3" />
+                </label>
+                <label>
+                  Timeout
+                  <input id="observatoryTimeout" value="3s" />
+                </label>
+                <label>
+                  HTTP method
+                  <select id="observatoryHttpMethod">
+                    <option value="HEAD" selected>HEAD</option>
+                    <option value="GET">GET</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </section>
 
-    <section class="output-grid">
+    <section class="output-workspace">
+      <div class="section-banner output-banner">
+        <span class="step-number">03</span>
+        <div>
+          <div class="step-title">Output workspace</div>
+          <div class="step-copy">Choose the generated configuration, advanced Xray profile, or standalone V2Box configs.</div>
+        </div>
+      </div>
+
+      <div class="output-grid">
       <div class="card output-card">
         <div class="section-head">
           <div>
+            <div class="eyebrow output-eyebrow">PRIMARY OUTPUT</div>
             <h2>Generated JSON</h2>
             <p>Multi-outbound configuration, formatted with 2-space indentation.</p>
           </div>
           <div class="actions">
-            <button id="copyBtn" class="secondary" type="button">Copy</button>
+            <button id="copyBtn" class="secondary" type="button">Copy JSON</button>
             <button id="downloadBtn" class="secondary" type="button">Download .json</button>
           </div>
         </div>
@@ -153,6 +193,7 @@
       <div class="card output-card advanced-output-card">
         <div class="section-head">
           <div>
+            <div class="eyebrow output-eyebrow">SPECIALIZED OUTPUT</div>
             <h2>Advanced Xray · Fingerprint + Fragment + Cipher Suites</h2>
             <p>Standalone one-outbound config based directly on your FinalMask sample: fingerprint + fragment + cipherSuites, with no burstObservatory or sniSpoof.</p>
           </div>
@@ -168,18 +209,21 @@
       <div class="card output-card v2box-output-card">
         <div class="section-head">
           <div>
+            <div class="eyebrow output-eyebrow">IMPORT-READY</div>
             <h2>V2Box Single Configs</h2>
-            <p>One independent JSON config per SNI/IP pair. Maximum 10 configs.</p>
+            <p>Each item is a standalone JSON config, ready to copy independently. Maximum 10 configs.</p>
+            <div class="output-note"><span class="note-dot">●</span> Standalone configs · no array wrapper</div>
           </div>
         </div>
         <div id="v2boxConfigs" class="v2box-configs" aria-live="polite"></div>
       </div>
 
+      </div>
     </section>
 
     <footer>
-      <span>Runs entirely in your browser.</span>
-      <span>Useful for static GitHub Pages hosting.</span>
+      <span>Client-side only · No configuration data is uploaded.</span>
+      <span>Built for static GitHub Pages.</span>
     </footer>
   </main>
 
