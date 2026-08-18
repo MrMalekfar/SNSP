@@ -469,26 +469,3 @@ footer {
     width: 100%;
   }
 }
-
-
-.tls-options-grid .full-span {
-  grid-column: 1 / -1;
-}
-
-.tls-options-grid textarea {
-  min-height: 120px;
-  resize: vertical;
-}
-
-.tls-output-card {
-  min-width: 0;
-}
-
-.tls-output-fields {
-  margin-top: 16px;
-}
-
-.tls-output-fields code {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}

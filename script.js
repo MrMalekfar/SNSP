@@ -15,6 +15,8 @@ const els = {
   copy: $("copyBtn"),
   download: $("downloadBtn"),
   output: $("output"),
+  advancedOutput: $("advancedOutput"),
+  advancedCopy: $("advancedCopyBtn"),
   v2boxConfigs: $("v2boxConfigs"),
   status: $("status"),
   fields: $("fields"),
@@ -28,18 +30,7 @@ const els = {
   observatoryInterval: $("observatoryInterval"),
   observatorySampling: $("observatorySampling"),
   observatoryTimeout: $("observatoryTimeout"),
-  observatoryHttpMethod: $("observatoryHttpMethod"),
-  tlsFingerprint: $("tlsFingerprint"),
-  tlsCipherSuites: $("tlsCipherSuites"),
-  fragmentPackets: $("fragmentPackets"),
-  fragmentLengths: $("fragmentLengths"),
-  fragmentDelays: $("fragmentDelays"),
-  fragmentMaxSplit: $("fragmentMaxSplit"),
-  fragment2Packets: $("fragment2Packets"),
-  fragment2Lengths: $("fragment2Lengths"),
-  fragment2Delays: $("fragment2Delays"),
-  fragment2MaxSplit: $("fragment2MaxSplit"),
-  tlsFragmentOutput: $("tlsFragmentOutput")
+  observatoryHttpMethod: $("observatoryHttpMethod")
 };
 
 function valueOf(el, fallback = "") {
@@ -53,6 +44,7 @@ function numberValueOf(el, fallback = 0) {
 
 let lastConfig = null;
 let lastV2boxConfigs = [];
+let lastAdvancedConfig = null;
 
 let sniList = [];
 
@@ -161,7 +153,7 @@ function parseVless(raw) {
   const wsHost = params.get("host") || sni;
   const wsPath = params.get("path") || "/";
   const alpn = (params.get("alpn") || "").split(",").map((x) => x.trim()).filter(Boolean);
-  const fingerprint = params.get("fp") || valueOf(els.tlsFingerprint, "unsafe").trim();
+  const fingerprint = params.get("fp") || "";
   const encryption = params.get("encryption") || "none";
   const insecureRaw = params.get("allowInsecure") ?? params.get("insecure") ?? "0";
   const allowInsecure = ["1", "true", "yes"].includes(String(insecureRaw).toLowerCase());
@@ -236,54 +228,48 @@ function getListDrivenOverrides() {
 }
 
 
+const defaultCipherSuites =
+  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
 
-function csvList(value, fallback = []) {
-  const items = String(value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return items.length ? items : fallback;
-}
-
-function buildTlsExtras() {
-  const fingerprint = valueOf(els.tlsFingerprint, "unsafe").trim() || "unsafe";
-  const cipherSuites = valueOf(
-    els.tlsCipherSuites,
-    "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
-  ).trim();
-
-  const fragmentEnabled = valueOf(els.fragmentPackets, "tlshello").trim() !== "";
-  const packets = valueOf(els.fragmentPackets, "tlshello").trim();
-  const lengths = csvList(valueOf(els.fragmentLengths, "5,94,1"));
-  const delays = csvList(valueOf(els.fragmentDelays, "0"));
-  const maxSplit = valueOf(els.fragmentMaxSplit, "0").trim() || "0";
-  const secondPackets = valueOf(els.fragment2Packets, "1-1").trim();
-  const secondLengths = csvList(valueOf(els.fragment2Lengths, "109,1"));
-  const secondDelays = csvList(valueOf(els.fragment2Delays, "1"));
-  const secondMaxSplit = valueOf(els.fragment2MaxSplit, "355").trim() || "355";
-
+function buildAdvancedTlsBlock(parsed) {
   return {
-    fingerprint,
-    cipherSuites,
+    fingerprint: parsed.fingerprint || "unsafe",
     fragment: {
-      enabled: fragmentEnabled,
-      tcp: [
-        { packets, lengths, delays, maxSplit },
-        { packets: secondPackets, lengths: secondLengths, delays: secondDelays, maxSplit: secondMaxSplit }
-      ]
-    }
+      type: "fragment",
+      settings: {
+        packets: "tlshello",
+        lengths: ["5", "94", "1"],
+        delays: ["0"],
+        maxSplit: "0"
+      }
+    },
+    cipherSuites: defaultCipherSuites
   };
 }
 
-function renderTlsFragmentOutput(extras) {
-  if (!els.tlsFragmentOutput) return;
-  els.tlsFragmentOutput.innerHTML = `
-    <div><dt>Fingerprint</dt><dd><code>${escapeHtml(extras.fingerprint || "—")}</code></dd></div>
-
-    <div><dt>Fragment #1</dt><dd><code>${escapeHtml(JSON.stringify(extras.fragment.tcp[0]))}</code></dd></div>
-    <div><dt>Fragment #2</dt><dd><code>${escapeHtml(JSON.stringify(extras.fragment.tcp[1]))}</code></dd></div>
-    <div><dt>Cipher suites</dt><dd><code>${escapeHtml(extras.cipherSuites || "—")}</code></dd></div>
-  `;
+function buildFinalMask() {
+  return {
+    tcp: [
+      {
+        type: "fragment",
+        settings: {
+          packets: "tlshello",
+          lengths: ["5", "94", "1"],
+          delays: ["0"],
+          maxSplit: "0"
+        }
+      },
+      {
+        type: "fragment",
+        settings: {
+          packets: "1-1",
+          lengths: ["109", "1"],
+          delays: ["1"],
+          maxSplit: "355"
+        }
+      }
+    ]
+  };
 }
 
 function buildOutbound(parsed, override, index) {
@@ -323,9 +309,9 @@ function buildOutbound(parsed, override, index) {
       tlsSettings: {
         allowInsecure: parsed.allowInsecure,
         ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
-        ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
+        fingerprint: parsed.fingerprint || "unsafe",
+        cipherSuites: defaultCipherSuites,
         serverName: parsed.sni,
-        cipherSuites: buildTlsExtras().cipherSuites,
         show: false
       },
       ...(parsed.transport === "ws" ? {
@@ -334,14 +320,7 @@ function buildOutbound(parsed, override, index) {
           path: parsed.wsPath
         }
       } : {}),
-      ...(buildTlsExtras().fragment.enabled ? {
-        finalmask: {
-          tcp: buildTlsExtras().fragment.tcp.map((fragmentRule) => ({
-            type: "fragment",
-            settings: fragmentRule
-          }))
-        }
-      } : {})
+      finalmask: buildFinalMask()
     },
     tag: override.tag
   };
@@ -463,6 +442,32 @@ function buildV2boxConfigs(parsed) {
   }));
 }
 
+function renderAdvancedConfig() {
+  if (!els.advancedOutput) return;
+
+  if (!lastAdvancedConfig) {
+    els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify({
+      message: "Generate JSON to build this block."
+    }, null, 2))}</code>`;
+    return;
+  }
+
+  els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(lastAdvancedConfig, null, 2))}</code>`;
+}
+
+async function copyAdvancedConfig() {
+  if (!lastAdvancedConfig) {
+    setStatus("Generate JSON first.", "error");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(lastAdvancedConfig, null, 2));
+    setStatus("Copied advanced TLS/fragment JSON to clipboard.", "success");
+  } catch {
+    setStatus("Clipboard access was blocked by the browser.", "error");
+  }
+}
+
 function renderV2boxConfigs() {
   if (!els.v2boxConfigs) return;
 
@@ -513,7 +518,6 @@ function buildConfig(parsed, listEntries) {
   const targetCount = listEntries.length;
   const selector = valueOf(els.observatorySelector, "AutoOut_").trim();
   const sampling = numberValueOf(els.observatorySampling, 3);
-  const tlsExtras = buildTlsExtras();
 
   if (!proxyAddress) throw new Error("Local proxy address cannot be empty.");
   if (!Number.isInteger(proxyStartPort) || proxyStartPort < 1 || proxyStartPort + targetCount - 1 > 65535) {
@@ -738,12 +742,11 @@ async function generate() {
     const entries = getListDrivenOverrides();
     const config = buildConfig(parsed, entries);
     lastConfig = config;
-    renderTlsFragmentOutput(buildTlsExtras());
     lastV2boxConfigs = buildV2boxConfigs(parsed);
+    lastAdvancedConfig = buildAdvancedTlsBlock(parsed);
     setDetectedFields(parsed);
-    if (els.tlsFingerprint && parsed.fingerprint) els.tlsFingerprint.value = parsed.fingerprint;
-    renderTlsFragmentOutput(buildTlsExtras());
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
+    renderAdvancedConfig();
     renderV2boxConfigs();
     console.info("Generated list-driven proxy outbounds:", entries);
     const capped = sourceListCount > MAX_V2BOX_CONFIGS ? ` (showing first ${MAX_V2BOX_CONFIGS} of ${sourceListCount})` : "";
@@ -751,6 +754,8 @@ async function generate() {
   } catch (error) {
     lastConfig = null;
     lastV2boxConfigs = [];
+    lastAdvancedConfig = null;
+    renderAdvancedConfig();
     renderV2boxConfigs();
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
   }
@@ -790,6 +795,7 @@ function downloadJson() {
 
 if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
 if (els.copy) els.copy.addEventListener("click", copyJson);
+if (els.advancedCopy) els.advancedCopy.addEventListener("click", copyAdvancedConfig);
 if (els.download) els.download.addEventListener("click", downloadJson);
 if (els.v2boxConfigs) {
   els.v2boxConfigs.addEventListener("click", (event) => {
@@ -817,6 +823,7 @@ if (els.input) els.input.addEventListener("keydown", (event) => {
   try {
     await loadSniList();
     renderOutboundRows();
+    renderAdvancedConfig();
     renderV2boxConfigs();
     const limitNote = sourceListCount > MAX_V2BOX_CONFIGS ? ` Using first ${MAX_V2BOX_CONFIGS} of ${sourceListCount}.` : "";
     setStatus(`Loaded ${sniList.length} SNI/IP pairs from list.json.${limitNote}`, "success");

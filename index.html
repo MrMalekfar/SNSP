@@ -65,55 +65,6 @@
 
         <div class="section-head subhead">
           <div>
-            <h2>TLS / Fragment Options</h2>
-            <p>These values are added to each generated VLESS outbound, following the structure of your sample JSON.</p>
-          </div>
-        </div>
-        <div class="form-grid tls-options-grid">
-          <label>
-            Fingerprint
-            <input id="tlsFingerprint" value="unsafe" />
-          </label>
-          <label>
-            Fragment packets
-            <input id="fragmentPackets" value="tlshello" />
-          </label>
-          <label>
-            Fragment lengths
-            <input id="fragmentLengths" value="5,94,1" />
-          </label>
-          <label>
-            Fragment delays
-            <input id="fragmentDelays" value="0" />
-          </label>
-          <label>
-            Fragment maxSplit
-            <input id="fragmentMaxSplit" value="0" />
-          </label>
-          <label>
-            Fragment #2 packets
-            <input id="fragment2Packets" value="1-1" />
-          </label>
-          <label>
-            Fragment #2 lengths
-            <input id="fragment2Lengths" value="109,1" />
-          </label>
-          <label>
-            Fragment #2 delays
-            <input id="fragment2Delays" value="1" />
-          </label>
-          <label>
-            Fragment #2 maxSplit
-            <input id="fragment2MaxSplit" value="355" />
-          </label>
-          <label class="full-span">
-            Cipher suites
-            <textarea id="tlsCipherSuites" rows="4">TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256</textarea>
-          </label>
-        </div>
-
-        <div class="section-head subhead">
-          <div>
             <h2>Outbounds from list.json</h2>
             <p>Every entry in <code>list.json</code> becomes one outbound. The page does not use manually entered SNI/IP values.</p>
           </div>
@@ -199,22 +150,6 @@
 }</code></pre>
       </div>
 
-      <div class="card output-card tls-output-card">
-        <div class="section-head">
-          <div>
-            <h2>TLS / Fragment Output</h2>
-            <p>Effective <code>fingerprint</code>, <code>fragment</code> and <code>cipherSuites</code> values used in the generated config.</p>
-          </div>
-        </div>
-        <dl id="tlsFragmentOutput" class="fields tls-output-fields">
-          <div><dt>Fingerprint</dt><dd>—</dd></div>
-          <div><dt>Fragment packets</dt><dd>—</dd></div>
-          <div><dt>Fragment #1</dt><dd>—</dd></div>
-          <div><dt>Fragment #2</dt><dd>—</dd></div>
-          <div><dt>Cipher suites</dt><dd>—</dd></div>
-        </dl>
-      </div>
-
       <div class="card output-card">
         <div class="section-head">
           <div>
@@ -224,6 +159,21 @@
         </div>
         <div id="v2boxConfigs" class="v2box-configs" aria-live="polite"></div>
       </div>
+
+      <div class="card output-card">
+        <div class="section-head">
+          <div>
+            <h2>Fingerprint + Fragment + CipherSuites</h2>
+            <p>Advanced TLS/fragment block generated from the same method as your example.</p>
+          </div>
+          <div class="actions">
+            <button id="advancedCopyBtn" class="secondary" type="button">Copy JSON</button>
+          </div>
+        </div>
+        <pre id="advancedOutput" aria-label="Advanced TLS JSON"><code>{
+  "message": "Generate JSON to build this block."
+}</code></pre>
+      </div>
     </section>
 
     <footer>
@@ -232,6 +182,6 @@
     </footer>
   </main>
 
-  <script src="./script.js?v=20260818-list-driven"></script>
+  <script src="./script.js?v=20260818-list-driven-advanced-tls"></script>
 </body>
 </html>
