@@ -272,7 +272,7 @@ function setDetectedFields(parsed) {
     sni: parsed.sni,
     wsHost: parsed.wsHost,
     wsPath: parsed.wsPath,
-    remark: parsed.remark || ""
+    remark: "EpoVpn" || parsed.remark  
   };
 
   Object.entries(mapping).forEach(([field, value]) => {
@@ -517,7 +517,7 @@ function buildSingleV2boxConfig(parsed, entry, index) {
         statsOutboundDownlink: true
       }
     },
-    remarks: parsed.remark,
+    remarks: "EpoVpn", //parsed.remark,
     routing: buildSingleRouting(),
     stats: {}
   };
@@ -670,7 +670,7 @@ function buildConfig(parsed, listEntries) {
         statsOutboundDownlink: true
       }
     },
-    remarks: parsed.remark,
+    remarks: "EpoVpn", //parsed.remark,
     routing: {
       // Preserve domain-based routing for the first match; do not resolve domains to IPs
       // merely to perform a second routing pass.
@@ -919,7 +919,7 @@ async function buildAdvancedConfig(parsed) {
         statsOutboundDownlink: true
       }
     },
-    remarks: parsed.remark,
+    remarks: "EpoVpn Advanced", //parsed.remark,
     routing: {
       domainStrategy: "IPIfNonMatch",
       rules: [
