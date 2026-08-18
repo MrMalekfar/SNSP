@@ -1,16 +1,3 @@
-let sniList = [];
-
-async function loadSniList() {
-  try {
-    const res = await fetch("./list.json");
-    if (!res.ok) throw new Error("list.json not found");
-
-    sniList = await res.json();
-  } catch (err) {
-    console.error("Failed to load list.json:", err);
-    sniList = [];
-  }
-}
 const sampleVless =
   "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
 
@@ -52,6 +39,19 @@ function numberValueOf(el, fallback = 0) {
 }
 
 let lastConfig = null;
+
+let sniList = [];
+
+async function loadSniList() {
+  try {
+    const res = await fetch("./list.json");
+    if (!res.ok) throw new Error();
+    sniList = await res.json();
+  } catch (e) {
+    console.error("Failed to load list.json", e);
+    sniList = [];
+  }
+}
 
 const staticDnsHosts = {
   "domain:googleapis.cn": "googleapis.com",
@@ -186,10 +186,11 @@ function renderOutboundRows(count) {
   for (let i = 1; i <= safeCount; i += 1) {
     const row = document.createElement("div");
     row.className = "outbound-row";
+    const item = sniList[(i - 1) % (sniList.length || 1)] || { sni: "hcaptcha.com", ip: "104.19.229.21" };
     row.innerHTML = `
       <div class="tag-cell">AutoOut_${i}</div>
-      <label>Fake SNI<input data-field="fakeSni" value="hcaptcha.com" /></label>
-      <label>Spoof IP<input data-field="spoofIp" value="104.19.229.21" /></label>
+      <label>Fake SNI<input data-field="fakeSni" value="${item.sni}" /></label>
+      <label>Spoof IP<input data-field="spoofIp" value="${item.ip}" /></label>
       <label>Target port<input data-field="targetPort" type="number" min="1" max="65535" value="443" /></label>
     `;
     els.outboundRows.appendChild(row);
@@ -451,7 +452,10 @@ if (els.copy) els.copy.addEventListener("click", copyJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
 if (els.sample) els.sample.addEventListener("click", () => {
   if (els.input) els.input.value = sampleVless;
+  (async () => {
+  await loadSniList();
   renderOutboundRows(valueOf(els.outboundCount, "3"));
+})();
   generate();
 });
 if (els.outboundCount) els.outboundCount.addEventListener("change", () => renderOutboundRows(valueOf(els.outboundCount, "3")));
