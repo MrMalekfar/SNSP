@@ -133,20 +133,40 @@
       </div>
     </section>
 
-    <section class="card output-card">
-      <div class="section-head">
-        <div>
-          <h2>Generated JSON</h2>
-          <p>Formatted with 2-space indentation.</p>
+    <section class="output-grid">
+      <div class="card output-card">
+        <div class="section-head">
+          <div>
+            <h2>Generated JSON</h2>
+            <p>Multi-outbound configuration, formatted with 2-space indentation.</p>
+          </div>
+          <div class="actions">
+            <button id="copyBtn" class="secondary" type="button">Copy</button>
+            <button id="downloadBtn" class="secondary" type="button">Download .json</button>
+          </div>
         </div>
-        <div class="actions">
-          <button id="copyBtn" class="secondary" type="button">Copy</button>
-          <button id="downloadBtn" class="secondary" type="button">Download .json</button>
-        </div>
-      </div>
-      <pre id="output" aria-label="Generated JSON"><code>{
+        <pre id="output" aria-label="Generated JSON"><code>{
   "message": "Paste a VLESS URL and click Generate JSON."
 }</code></pre>
+      </div>
+
+      <div class="card output-card">
+        <div class="section-head">
+          <div>
+            <h2>V2Box Single Configs</h2>
+            <p>One complete JSON config per IP/SNI pair, returned as a JSON array.</p>
+          </div>
+          <div class="actions">
+            <button id="copyV2boxBtn" class="secondary" type="button">Copy Array</button>
+            <button id="downloadV2boxBtn" class="secondary" type="button">Download .json</button>
+          </div>
+        </div>
+        <pre id="v2boxOutput" aria-label="V2Box single configs"><code>[
+  {
+    "message": "Generate JSON to build the V2Box array."
+  }
+]</code></pre>
+      </div>
     </section>
 
     <footer>

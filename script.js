@@ -12,6 +12,9 @@ const els = {
   copy: $("copyBtn"),
   download: $("downloadBtn"),
   output: $("output"),
+  v2boxOutput: $("v2boxOutput"),
+  copyV2box: $("copyV2boxBtn"),
+  downloadV2box: $("downloadV2boxBtn"),
   status: $("status"),
   fields: $("fields"),
   proxyAddress: $("proxyAddress"),
@@ -37,6 +40,7 @@ function numberValueOf(el, fallback = 0) {
 }
 
 let lastConfig = null;
+let lastV2boxConfigs = null;
 
 let sniList = [];
 
@@ -271,6 +275,119 @@ function buildOutbound(parsed, override, index) {
   };
 }
 
+function buildSingleRouting() {
+  return {
+    domainStrategy: "AsIs",
+    rules: [
+      {
+        ip: ["8.8.8.8"],
+        outboundTag: "direct",
+        port: "53",
+        type: "field"
+      },
+      {
+        ip: ["1.1.1.1"],
+        outboundTag: "proxy",
+        port: "53",
+        type: "field"
+      },
+      {
+        ip: ["223.5.5.5"],
+        outboundTag: "direct",
+        port: "53",
+        type: "field"
+      }
+    ]
+  };
+}
+
+function buildSingleV2boxConfig(parsed, entry, index) {
+  const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
+  const proxyPort = numberValueOf(els.proxyPort, 41105);
+
+  return {
+    dns: {
+      hosts: staticDnsHosts,
+      servers: [
+        "1.1.1.1",
+        {
+          address: "223.5.5.5",
+          domains: [],
+          skipFallback: true,
+          tag: "domestic-dns0"
+        }
+      ],
+      tag: "dns-module"
+    },
+    inbounds: [
+      {
+        listen: "127.0.0.1",
+        port: 10808,
+        protocol: "socks",
+        settings: {
+          auth: "noauth",
+          udp: true,
+          userLevel: 8
+        },
+        sniffing: {
+          destOverride: ["http", "tls"],
+          enabled: true,
+          routeOnly: false
+        },
+        tag: "socks"
+      }
+    ],
+    log: {
+      loglevel: valueOf(els.logLevel, "warning")
+    },
+    outbounds: [
+      buildOutbound(parsed, {
+        tag: "proxy",
+        fakeSni: entry.sni,
+        spoofIp: entry.ip,
+        targetPort: 443
+      }, index),
+      {
+        protocol: "freedom",
+        settings: {
+          domainStrategy: "UseIP"
+        },
+        tag: "direct"
+      },
+      {
+        protocol: "blackhole",
+        settings: {
+          response: {
+            type: "http"
+          }
+        },
+        tag: "block"
+      }
+    ],
+    policy: {
+      levels: {
+        "8": {
+          connIdle: 300,
+          downlinkOnly: 1,
+          handshake: 4,
+          uplinkOnly: 1
+        }
+      },
+      system: {
+        statsOutboundUplink: true,
+        statsOutboundDownlink: true
+      }
+    },
+    remarks: parsed.remark,
+    routing: buildSingleRouting(),
+    stats: {}
+  };
+}
+
+function buildV2boxConfigs(parsed) {
+  return sniList.map((entry, index) => buildSingleV2boxConfig(parsed, entry, index));
+}
+
 function buildConfig(parsed, listEntries) {
   const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
   const proxyStartPort = numberValueOf(els.proxyPort, 41105);
@@ -501,12 +618,18 @@ async function generate() {
     const entries = getListDrivenOverrides();
     const config = buildConfig(parsed, entries);
     lastConfig = config;
+    lastV2boxConfigs = buildV2boxConfigs(parsed);
     setDetectedFields(parsed);
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
+    if (els.v2boxOutput) els.v2boxOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(lastV2boxConfigs, null, 2))}</code>`;
     console.info("Generated list-driven proxy outbounds:", entries);
     setStatus(`Generated ${entries.length} proxy outbounds directly from list.json: ${entries.map((x) => `${x.tag} (${x.fakeSni} → ${x.spoofIp})`).join(", ")}.`, "success");
   } catch (error) {
     lastConfig = null;
+    lastV2boxConfigs = null;
+    if (els.v2boxOutput) {
+      els.v2boxOutput.innerHTML = `<code>${escapeHtml(JSON.stringify({ message: "Generate JSON to build the V2Box array." }, null, 2))}</code>`;
+    }
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
   }
 }
@@ -522,6 +645,38 @@ async function copyJson() {
   } catch {
     setStatus("Clipboard access was blocked by the browser.", "error");
   }
+}
+
+async function copyV2boxJson() {
+  if (!lastV2boxConfigs) {
+    setStatus("Generate JSON first.", "error");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(lastV2boxConfigs, null, 2));
+    setStatus("V2Box JSON array copied to clipboard.", "success");
+  } catch {
+    setStatus("Clipboard access was blocked by the browser.", "error");
+  }
+}
+
+function downloadV2boxJson() {
+  if (!lastV2boxConfigs) {
+    setStatus("Generate JSON first.", "error");
+    return;
+  }
+  const blob = new Blob([JSON.stringify(lastV2boxConfigs, null, 2)], {
+    type: "application/json;charset=utf-8"
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "v2box-single-configs.json";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  setStatus("V2Box JSON array downloaded.", "success");
 }
 
 function downloadJson() {
@@ -546,6 +701,8 @@ function downloadJson() {
 if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
 if (els.copy) els.copy.addEventListener("click", copyJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
+if (els.copyV2box) els.copyV2box.addEventListener("click", copyV2boxJson);
+if (els.downloadV2box) els.downloadV2box.addEventListener("click", downloadV2boxJson);
 if (els.sample) els.sample.addEventListener("click", async () => {
   if (els.input) els.input.value = sampleVless;
   try {
