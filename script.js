@@ -379,7 +379,7 @@ function buildConfig(parsed, listEntries) {
         },
         {
           ip: ["1.1.1.1"],
-          outboundTag: "AutoOut_1",
+          outboundTag: "direct",
           port: "53",
           type: "field"
         },
@@ -388,6 +388,20 @@ function buildConfig(parsed, listEntries) {
           outboundTag: "direct",
           port: "53",
           type: "field"
+        },
+        {
+          balancerTag: "all",
+          type: "field"
+        }
+      ],
+      balancers: [
+        {
+          tag: "all",
+          selector: ["AutoOut_"],
+          strategy: {
+            type: "leastLoad"
+          },
+          fallbackTag: "AutoOut_1"
         }
       ]
     },
