@@ -1,5 +1,5 @@
 const sampleVless =
-  "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1%20-%D9%88%E2%80%8B%DB%8C%E2%80%8B%DA%98%E2%80%8B%D9%87%F0%9F%87%A9%F0%9F%87%AA%20%20%20%20%20%20%20%20%20%20%20%20%20%20%F0%9F%92%ACTel%3A%20%40%F0%9F%87%AA%E2%80%8B%F0%9F%87%B5%E2%80%8B%F0%9F%87%B4%E2%80%8B%F0%9F%87%BB%E2%80%8B%F0%9F%87%B5%E2%80%8B%F0%9F%87%B3";
+  "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
 
 const els = {
   input: document.getElementById("vlessInput"),
@@ -12,10 +12,18 @@ const els = {
   fields: document.getElementById("fields"),
   proxyAddress: document.getElementById("proxyAddress"),
   proxyPort: document.getElementById("proxyPort"),
-  fakeSni: document.getElementById("fakeSni"),
-  spoofIp: document.getElementById("spoofIp"),
+  outboundCount: document.getElementById("outboundCount"),
   targetPort: document.getElementById("targetPort"),
-  logLevel: document.getElementById("logLevel")
+  logLevel: document.getElementById("logLevel"),
+  applyCount: document.getElementById("applyCountBtn"),
+  outboundRows: document.getElementById("outboundRows"),
+  observatorySelector: document.getElementById("observatorySelector"),
+  observatoryDestination: document.getElementById("observatoryDestination"),
+  observatoryConnectivity: document.getElementById("observatoryConnectivity"),
+  observatoryInterval: document.getElementById("observatoryInterval"),
+  observatorySampling: document.getElementById("observatorySampling"),
+  observatoryTimeout: document.getElementById("observatoryTimeout"),
+  observatoryHttpMethod: document.getElementById("observatoryHttpMethod")
 };
 
 let lastConfig = null;
@@ -37,9 +45,14 @@ function setStatus(message, kind = "") {
   els.status.className = `status ${kind}`.trim();
 }
 
-function getQueryValue(params, key, fallback = "") {
-  const value = params.get(key);
-  return value == null ? fallback : value;
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[char]));
 }
 
 function parseVless(raw) {
@@ -58,14 +71,9 @@ function parseVless(raw) {
 
   const userPart = withoutFragment.slice(8, atIndex);
   const serverPart = withoutFragment.slice(atIndex + 1);
-
-  let serverNoQuery = serverPart;
-  let queryPart = "";
   const queryIndex = serverPart.indexOf("?");
-  if (queryIndex >= 0) {
-    serverNoQuery = serverPart.slice(0, queryIndex);
-    queryPart = serverPart.slice(queryIndex + 1);
-  }
+  const serverNoQuery = queryIndex >= 0 ? serverPart.slice(0, queryIndex) : serverPart;
+  const queryPart = queryIndex >= 0 ? serverPart.slice(queryIndex + 1) : "";
 
   let address = serverNoQuery;
   let portText = "";
@@ -78,7 +86,7 @@ function parseVless(raw) {
     }
   } else {
     const colon = serverNoQuery.lastIndexOf(":");
-    if (colon > -1 && serverNoQuery.indexOf(":") === colon) {
+    if (colon >= 0 && serverNoQuery.indexOf(":") === colon) {
       address = serverNoQuery.slice(0, colon);
       portText = serverNoQuery.slice(colon + 1);
     }
@@ -90,28 +98,21 @@ function parseVless(raw) {
   }
 
   const params = new URLSearchParams(queryPart);
-  const decodedUuid = decodeURIComponent(userPart);
-  const uuid = decodedUuid.trim();
-
-  const transport = getQueryValue(params, "type", "tcp");
-  const security = getQueryValue(params, "security", "none");
-  const sni = getQueryValue(params, "sni", getQueryValue(params, "host", address));
-  const wsHost = getQueryValue(params, "host", sni);
-  const wsPath = getQueryValue(params, "path", "/");
-  const alpnRaw = getQueryValue(params, "alpn", "");
-  const alpn = alpnRaw
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const fingerprint = getQueryValue(params, "fp", "");
-  const encryption = getQueryValue(params, "encryption", "none");
-  const insecureRaw = getQueryValue(params, "allowInsecure", getQueryValue(params, "insecure", "0"));
+  const uuid = decodeURIComponent(userPart).trim();
+  const transport = params.get("type") || "tcp";
+  const security = params.get("security") || "none";
+  const sni = params.get("sni") || params.get("host") || address;
+  const wsHost = params.get("host") || sni;
+  const wsPath = params.get("path") || "/";
+  const alpn = (params.get("alpn") || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const fingerprint = params.get("fp") || "";
+  const encryption = params.get("encryption") || "none";
+  const insecureRaw = params.get("allowInsecure") ?? params.get("insecure") ?? "0";
   const allowInsecure = ["1", "true", "yes"].includes(String(insecureRaw).toLowerCase());
-  const flow = getQueryValue(params, "flow", "");
+  const flow = params.get("flow") || "";
   const remark = decodeURIComponent(fragment.replace(/\+/g, " "));
 
   if (!uuid) throw new Error("Missing VLESS UUID.");
-  if (!transport) throw new Error("Missing transport type.");
 
   return {
     uuid,
@@ -144,33 +145,121 @@ function setDetectedFields(parsed) {
     ["Remark", parsed.remark || "—"]
   ];
 
-  els.fields.innerHTML = mapping
-    .map(([name, value]) => `<div><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(String(value))}</dd></div>`)
-    .join("");
+  els.fields.innerHTML = mapping.map(([name, value]) =>
+    `<div><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd></div>`
+  ).join("");
 }
 
-function escapeHtml(text) {
-  return text.replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  }[char]));
+function renderOutboundRows(count) {
+  const safeCount = Math.min(50, Math.max(1, Number(count) || 1));
+  els.outboundCount.value = safeCount;
+  els.outboundRows.innerHTML = "";
+
+  for (let i = 1; i <= safeCount; i += 1) {
+    const row = document.createElement("div");
+    row.className = "outbound-row";
+    row.innerHTML = `
+      <div class="tag-cell">AutoOut_${i}</div>
+      <label>Fake SNI<input data-field="fakeSni" value="hcaptcha.com" /></label>
+      <label>Spoof IP<input data-field="spoofIp" value="104.19.229.21" /></label>
+      <label>Target port<input data-field="targetPort" type="number" min="1" max="65535" value="443" /></label>
+    `;
+    els.outboundRows.appendChild(row);
+  }
 }
 
-function buildConfig(parsed) {
-  const proxyPort = Number(els.proxyPort.value);
-  const targetPort = Number(els.targetPort.value);
+function readOutboundRows() {
+  const rows = [...els.outboundRows.querySelectorAll(".outbound-row")];
+  return rows.map((row, index) => {
+    const fakeSni = row.querySelector('[data-field="fakeSni"]').value.trim();
+    const spoofIp = row.querySelector('[data-field="spoofIp"]').value.trim();
+    const targetPort = Number(row.querySelector('[data-field="targetPort"]').value);
 
-  if (!Number.isInteger(proxyPort) || proxyPort < 1 || proxyPort > 65535) {
-    throw new Error("Local proxy port must be between 1 and 65535.");
-  }
-  if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
-    throw new Error("Spoof target port must be between 1 and 65535.");
-  }
+    if (!fakeSni) throw new Error(`AutoOut_${index + 1}: Fake SNI cannot be empty.`);
+    if (!spoofIp) throw new Error(`AutoOut_${index + 1}: Spoof IP cannot be empty.`);
+    if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
+      throw new Error(`AutoOut_${index + 1}: target port must be between 1 and 65535.`);
+    }
 
-  const config = {
+    return {
+      tag: `AutoOut_${index + 1}`,
+      fakeSni,
+      spoofIp,
+      targetPort
+    };
+  });
+}
+
+function buildOutbound(parsed, override, index) {
+  const proxyPort = Number(els.proxyPort.value) + index;
+
+  return {
+    mux: {
+      concurrency: -1,
+      enabled: false
+    },
+    protocol: "vless",
+    settings: {
+      vnext: [
+        {
+          address: els.proxyAddress.value.trim(),
+          port: proxyPort,
+          users: [
+            {
+              encryption: parsed.encryption || "none",
+              flow: parsed.flow || "",
+              id: parsed.uuid,
+              level: 8
+            }
+          ]
+        }
+      ]
+    },
+    sniSpoof: {
+      active: true,
+      fakeSni: override.fakeSni,
+      spoofIp: override.spoofIp,
+      targetPort: override.targetPort
+    },
+    streamSettings: {
+      network: parsed.transport,
+      security: parsed.security,
+      tlsSettings: {
+        allowInsecure: parsed.allowInsecure,
+        ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
+        ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
+        serverName: parsed.sni,
+        show: false
+      },
+      ...(parsed.transport === "ws" ? {
+        wsSettings: {
+          headers: { Host: parsed.wsHost },
+          path: parsed.wsPath
+        }
+      } : {})
+    },
+    tag: override.tag
+  };
+}
+
+function buildConfig(parsed, overrides) {
+  const proxyAddress = els.proxyAddress.value.trim();
+  const proxyStartPort = Number(els.proxyPort.value);
+  const targetCount = overrides.length;
+  const selector = els.observatorySelector.value.trim();
+  const sampling = Number(els.observatorySampling.value);
+
+  if (!proxyAddress) throw new Error("Local proxy address cannot be empty.");
+  if (!Number.isInteger(proxyStartPort) || proxyStartPort < 1 || proxyStartPort + targetCount - 1 > 65535) {
+    throw new Error("The starting local proxy port range is invalid.");
+  }
+  if (!selector) throw new Error("Burst Observatory subject selector cannot be empty.");
+  if (!Number.isInteger(sampling) || sampling < 1) throw new Error("Sampling must be at least 1.");
+  if (!els.observatoryDestination.value.trim()) throw new Error("Burst Observatory destination cannot be empty.");
+  if (!els.observatoryInterval.value.trim()) throw new Error("Burst Observatory interval cannot be empty.");
+  if (!els.observatoryTimeout.value.trim()) throw new Error("Burst Observatory timeout cannot be empty.");
+
+  return {
     dns: {
       hosts: staticDnsHosts,
       servers: [
@@ -205,56 +294,19 @@ function buildConfig(parsed) {
     log: {
       loglevel: els.logLevel.value
     },
+    burstObservatory: {
+      subjectSelector: [selector],
+      pingConfig: {
+        destination: els.observatoryDestination.value.trim(),
+        connectivity: els.observatoryConnectivity.value.trim(),
+        interval: els.observatoryInterval.value.trim(),
+        sampling,
+        timeout: els.observatoryTimeout.value.trim(),
+        httpMethod: els.observatoryHttpMethod.value
+      }
+    },
     outbounds: [
-      {
-        mux: {
-          concurrency: -1,
-          enabled: false
-        },
-        protocol: "vless",
-        settings: {
-          vnext: [
-            {
-              address: els.proxyAddress.value.trim(),
-              port: proxyPort,
-              users: [
-                {
-                  encryption: parsed.encryption || "none",
-                  flow: parsed.flow || "",
-                  id: parsed.uuid,
-                  level: 8
-                }
-              ]
-            }
-          ]
-        },
-        sniSpoof: {
-          active: true,
-          fakeSni: els.fakeSni.value.trim(),
-          spoofIp: els.spoofIp.value.trim(),
-          targetPort
-        },
-        streamSettings: {
-          network: parsed.transport,
-          security: parsed.security,
-          tlsSettings: {
-            allowInsecure: parsed.allowInsecure,
-            ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
-            ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
-            serverName: parsed.sni,
-            show: false
-          },
-          ...(parsed.transport === "ws" ? {
-            wsSettings: {
-              headers: {
-                Host: parsed.wsHost
-              },
-              path: parsed.wsPath
-            }
-          } : {})
-        },
-        tag: "proxy"
-      },
+      ...overrides.map((override, index) => buildOutbound(parsed, override, index)),
       {
         protocol: "freedom",
         settings: {
@@ -298,7 +350,7 @@ function buildConfig(parsed) {
         },
         {
           ip: ["1.1.1.1"],
-          outboundTag: "proxy",
+          outboundTag: "AutoOut_1",
           port: "53",
           type: "field"
         },
@@ -312,17 +364,17 @@ function buildConfig(parsed) {
     },
     stats: {}
   };
-
-  return config;
 }
 
 function generate() {
   try {
     const parsed = parseVless(els.input.value);
+    const overrides = readOutboundRows();
+    const config = buildConfig(parsed, overrides);
+    lastConfig = config;
     setDetectedFields(parsed);
-    lastConfig = buildConfig(parsed);
-    els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(lastConfig, null, 2))}</code>`;
-    setStatus("JSON generated successfully.", "success");
+    els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
+    setStatus(`Generated ${overrides.length} proxy outbounds: ${overrides.map((x) => x.tag).join(", ")}.`, "success");
   } catch (error) {
     lastConfig = null;
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
@@ -334,9 +386,8 @@ async function copyJson() {
     setStatus("Generate JSON first.", "error");
     return;
   }
-  const text = JSON.stringify(lastConfig, null, 2);
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(JSON.stringify(lastConfig, null, 2));
     setStatus("Copied JSON to clipboard.", "success");
   } catch {
     setStatus("Clipboard access was blocked by the browser.", "error");
@@ -354,7 +405,7 @@ function downloadJson() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "vless-config.json";
+  anchor.download = "xray-multi-vless-config.json";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -363,15 +414,17 @@ function downloadJson() {
 }
 
 els.generate.addEventListener("click", generate);
+els.applyCount.addEventListener("click", () => renderOutboundRows(els.outboundCount.value));
 els.copy.addEventListener("click", copyJson);
 els.download.addEventListener("click", downloadJson);
 els.sample.addEventListener("click", () => {
   els.input.value = sampleVless;
+  renderOutboundRows(els.outboundCount.value);
   generate();
 });
-
+els.outboundCount.addEventListener("change", () => renderOutboundRows(els.outboundCount.value));
 els.input.addEventListener("keydown", (event) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-    generate();
-  }
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") generate();
 });
+
+renderOutboundRows(els.outboundCount.value);

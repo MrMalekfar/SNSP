@@ -45,20 +45,12 @@
             <input id="proxyAddress" value="127.0.0.1" />
           </label>
           <label>
-            Local proxy port
+            Local proxy starting port
             <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
           </label>
           <label>
-            Fake SNI
-            <input id="fakeSni" value="hcaptcha.com" />
-          </label>
-          <label>
-            Spoof IP
-            <input id="spoofIp" value="104.19.229.21" />
-          </label>
-          <label>
-            Target port
-            <input id="targetPort" type="number" min="1" max="65535" value="443" />
+            Number of proxy outbounds
+            <input id="outboundCount" type="number" min="1" max="50" value="3" />
           </label>
           <label>
             Log level
@@ -67,6 +59,55 @@
               <option value="info">info</option>
               <option value="debug">debug</option>
               <option value="error">error</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="section-head subhead">
+          <div>
+            <h2>Per-outbound spoof settings</h2>
+            <p>Each generated outbound gets a unique tag such as <code>AutoOut_1</code>. Local proxy ports increment from the starting port.</p>
+          </div>
+          <button id="applyCountBtn" class="secondary" type="button">Apply count</button>
+        </div>
+        <div id="outboundRows" class="outbound-rows"></div>
+
+        <div class="section-head subhead">
+          <div>
+            <h2>Burst Observatory</h2>
+            <p>Xray probes every outbound whose tag starts with the selector.</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label>
+            Subject selector
+            <input id="observatorySelector" value="AutoOut_" />
+          </label>
+          <label>
+            Destination
+            <input id="observatoryDestination" value="http://edge.microsoft.com/captiveportal/generate_204" />
+          </label>
+          <label>
+            Connectivity
+            <input id="observatoryConnectivity" value="" />
+          </label>
+          <label>
+            Interval
+            <input id="observatoryInterval" value="20m" />
+          </label>
+          <label>
+            Sampling
+            <input id="observatorySampling" type="number" min="1" value="3" />
+          </label>
+          <label>
+            Timeout
+            <input id="observatoryTimeout" value="3s" />
+          </label>
+          <label>
+            HTTP method
+            <select id="observatoryHttpMethod">
+              <option value="HEAD" selected>HEAD</option>
+              <option value="GET">GET</option>
             </select>
           </label>
         </div>
