@@ -1,42 +1,41 @@
-# VLESS → JSON Converter
+# VLESS JSON Converter — GitHub list-driven
 
-A static, client-side GitHub Pages app for turning one `vless://` URL into an Xray JSON configuration.
+این نسخه Outboundها را فقط از `list.json` می‌سازد. هر رکورد `{ "ip", "sni" }` دقیقاً یک `AutoOut_N` ایجاد می‌کند.
 
-## SNI/IP source
+## Routing
 
-The proxy outbound list is read directly from `list.json` in the same GitHub repository. **The web page no longer uses a user-entered outbound count or manually entered SNI/IP values.**
+خروجی با `routing.domainStrategy = "AsIs"` تولید می‌شود و شامل:
 
-Example `list.json`:
+- DNSهای مشخص‌شده برای Balancer/Direct
+- مسدودسازی UDP/443
+- مسدودسازی `geosite:category-ads-all`
+- مسدودسازی IPهای مشخص‌شده
+- Direct برای `geoip:private` و `geosite:private`
+- Direct برای `geoip:ir` و دامنه‌های `.ir` / `geosite:category-ir`
+- Direct برای `workers.dev` فقط در مسیر `/QR/...`
+- Direct برای BitTorrent
+- Rule نهایی برای ارسال باقی‌ماندهٔ ترافیک به Balancer `all`
+
+Balancer:
+
+```json
+{
+  "tag": "all",
+  "selector": ["AutoOut_"],
+  "strategy": { "type": "leastLoad" },
+  "fallbackTag": "AutoOut_1"
+}
+```
+
+### Important
+
+`list.json` باید یک آرایهٔ JSON معتبر باشد:
 
 ```json
 [
   { "ip": "104.17.141.179", "sni": "aosabook.org" },
-  { "ip": "172.67.242.89", "sni": "akamaized.net" },
-  { "ip": "104.19.156.170", "sni": "brew.sh" },
-  { "ip": "104.17.57.87", "sni": "fastly.com" },
-  { "ip": "172.67.198.76", "sni": "paypal.com" },
-  { "ip": "172.65.208.28", "sni": "pypi.org" },
-  { "ip": "104.16.80.16", "sni": "python.org" },
-  { "ip": "104.24.186.83", "sni": "speedtest.net" },
-  { "ip": "104.19.144.45", "sni": "v16m-default.akamaized.net" }
+  { "ip": "172.67.242.89", "sni": "akamaized.net" }
 ]
 ```
 
-Each item creates exactly one generated outbound:
-
-- `fakeSni` = the item's `sni`
-- `spoofIp` = the item's `ip`
-- `targetPort` = `443`
-- tag = `AutoOut_1`, `AutoOut_2`, ...
-
-So if `list.json` contains 9 entries, the generated config contains 9 proxy outbounds (plus `direct` and `block`).
-
-## GitHub Pages
-
-Keep `index.html`, `style.css`, `script.js`, and `list.json` in the same directory of the repository. The browser fetches `./list.json` from the GitHub Pages origin with cache disabled for the request.
-
-Everything runs locally in the browser; the VLESS URL is not uploaded to a backend.
-
-## Important
-
-The Generate action reloads `list.json` every time. The number of proxy outbounds is exactly the number of valid records in `list.json`; there is no HTML outbound-count input and no fallback to three outbounds.
+برای GitHub Pages، `list.json` باید در کنار `index.html` و `script.js` قرار داشته باشد.
