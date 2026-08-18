@@ -22,7 +22,7 @@ body {
 .container {
   width: min(1220px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 42px 0 28px;
+  padding: 30px 0 22px;
 }
 
 .hero {
@@ -68,8 +68,8 @@ code, pre, textarea, input, select {
 }
 
 .card {
-  margin-bottom: 18px;
-  padding: 20px;
+  margin-bottom: 14px;
+  padding: 16px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 18px;
   background: rgba(15, 23, 42, 0.82);
@@ -88,17 +88,18 @@ textarea,
 input,
 select {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 6px;
   border: 1px solid #334155;
-  border-radius: 12px;
+  border-radius: 10px;
   outline: none;
   background: #020617;
   color: #f8fafc;
-  padding: 11px 12px;
+  padding: 8px 10px;
 }
 
 textarea {
-  min-height: 230px;
+  min-height: 64px;
+  height: 64px;
   resize: vertical;
   font-size: 0.88rem;
 }
@@ -187,8 +188,8 @@ button:active {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .table-wrap {
@@ -352,8 +353,8 @@ footer {
 }
 
 .subhead {
-  margin-top: 20px;
-  margin-bottom: 10px;
+  margin-top: 14px;
+  margin-bottom: 8px;
 }
 
 .outbound-rows {
@@ -365,9 +366,9 @@ footer {
 .outbound-row {
   display: grid;
   grid-template-columns: 120px 1fr 1fr 140px;
-  gap: 10px;
+  gap: 8px;
   align-items: end;
-  padding: 12px;
+  padding: 9px;
   border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 12px;
   background: rgba(2, 6, 23, 0.5);
@@ -401,8 +402,8 @@ footer {
 
 .v2box-configs {
   display: grid;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .v2box-config-card {
@@ -417,7 +418,7 @@ footer {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
