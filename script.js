@@ -138,7 +138,7 @@ function escapeHtml(text) {
 function parseVless(raw) {
   const value = raw.trim();
   if (!value) throw new Error("Paste a VLESS URL first.");
-  if (!value.toLowerCase().startsWith("vless://")) {
+  if (!value.toLowerCase().startsWith("vless:// Application configuration logic.
     throw new Error("The input must start with vless://");
   }
 
@@ -622,8 +622,8 @@ function buildConfig(parsed, listEntries) {
     },
     remarks: parsed.remark,
     routing: {
-      // Keep routing domain handling exactly as requested: do not resolve domains
-      // to IPs just to perform a second routing pass.
+      // Application configuration logic.
+      // Application configuration logic.
       domainStrategy: "IPIfNonMatch",
       rules: [
         {
@@ -956,7 +956,7 @@ async function copyAdvancedJson() {
 
 async function generate() {
   try {
-    // Always reload the repository list before generating so stale in-memory data cannot be used.
+    // Application configuration logic.
     await loadSniList();
     renderOutboundRows();
     const rawInput = valueOf(els.input);
