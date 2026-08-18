@@ -213,22 +213,48 @@ function parseVless(raw) {
 }
 
 function setDetectedFields(parsed) {
-  const mapping = [
-    ["UUID", parsed.uuid],
-    ["Address", parsed.address],
-    ["Port", parsed.port],
-    ["Transport", parsed.transport],
-    ["Security", parsed.security],
-    ["SNI", parsed.sni],
-    ["WS Host", parsed.wsHost],
-    ["WS Path", parsed.wsPath],
-    ["Remark", parsed.remark || "—"]
-  ];
+  const mapping = {
+    uuid: parsed.uuid,
+    address: parsed.address,
+    port: parsed.port,
+    transport: parsed.transport,
+    security: parsed.security,
+    sni: parsed.sni,
+    wsHost: parsed.wsHost,
+    wsPath: parsed.wsPath,
+    remark: parsed.remark || ""
+  };
 
-  if (!els.fields) return;
-  els.fields.innerHTML = mapping.map(([name, value]) =>
-    `<div><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd></div>`
-  ).join("");
+  Object.entries(mapping).forEach(([field, value]) => {
+    const el = els.fields?.querySelector(`[data-field="${field}"]`);
+    if (el) el.value = String(value ?? "");
+  });
+}
+
+function getEditedParsedFields(parsed) {
+  const get = (field, fallback) => {
+    const el = els.fields?.querySelector(`[data-field="${field}"]`);
+    const value = el ? String(el.value ?? "").trim() : "";
+    return value || fallback;
+  };
+
+  const port = Number(get("port", parsed.port));
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Detected VLESS Port must be an integer between 1 and 65535.");
+  }
+
+  return {
+    ...parsed,
+    uuid: get("uuid", parsed.uuid),
+    address: get("address", parsed.address),
+    port,
+    transport: get("transport", parsed.transport),
+    security: get("security", parsed.security),
+    sni: get("sni", parsed.sni),
+    wsHost: get("wsHost", parsed.wsHost),
+    wsPath: get("wsPath", parsed.wsPath),
+    remark: get("remark", parsed.remark)
+  };
 }
 
 function renderOutboundRows() {
@@ -239,24 +265,50 @@ function renderOutboundRows() {
     const row = document.createElement("div");
     row.className = "outbound-row list-driven-row";
     row.innerHTML = `
-      <div class="tag-cell">AutoOut_${index + 1}</div>
-      <div><span class="field-label">Fake SNI</span><code>${escapeHtml(item.sni)}</code></div>
-      <div><span class="field-label">Spoof IP</span><code>${escapeHtml(item.ip)}</code></div>
-      <div><span class="field-label">Target port</span><code>443</code></div>
+      <label>
+        Tag
+        <input data-outbound-field="tag" data-index="${index}" value="AutoOut_${index + 1}" />
+      </label>
+      <label>
+        Fake SNI
+        <input data-outbound-field="fakeSni" data-index="${index}" value="${escapeHtml(item.sni)}" />
+      </label>
+      <label>
+        Spoof IP
+        <input data-outbound-field="spoofIp" data-index="${index}" value="${escapeHtml(item.ip)}" />
+      </label>
+      <label>
+        Target port
+        <input data-outbound-field="targetPort" data-index="${index}" type="number" min="1" max="65535" value="443" />
+      </label>
     `;
     els.outboundRows.appendChild(row);
   });
-
 }
 
 function getListDrivenOverrides() {
   if (!sniList.length) throw new Error("list.json is empty; load it before generating JSON.");
-  return sniList.map((item, index) => ({
-    tag: `AutoOut_${index + 1}`,
-    fakeSni: item.sni,
-    spoofIp: item.ip,
-    targetPort: 443
-  }));
+
+  return sniList.map((item, index) => {
+    const read = (field, fallback) => {
+      const el = els.outboundRows?.querySelector(`[data-outbound-field="${field}"][data-index="${index}"]`);
+      return el ? String(el.value ?? "").trim() : fallback;
+    };
+
+    const tag = read("tag", `AutoOut_${index + 1}`);
+    const fakeSni = read("fakeSni", item.sni);
+    const spoofIp = read("spoofIp", item.ip);
+    const targetPort = Number(read("targetPort", "443"));
+
+    if (!tag) throw new Error(`Outbound ${index + 1} tag cannot be empty.`);
+    if (!fakeSni) throw new Error(`Outbound ${index + 1} Fake SNI cannot be empty.`);
+    if (!spoofIp) throw new Error(`Outbound ${index + 1} Spoof IP cannot be empty.`);
+    if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
+      throw new Error(`Outbound ${index + 1} target port must be between 1 and 65535.`);
+    }
+
+    return { tag, fakeSni, spoofIp, targetPort };
+  });
 }
 
 
@@ -907,8 +959,11 @@ async function generate() {
     // Always reload the repository list before generating so stale in-memory data cannot be used.
     await loadSniList();
     renderOutboundRows();
-    const parsed = parseVless(valueOf(els.input));
+    const rawInput = valueOf(els.input);
+    const parsedBase = parseVless(rawInput);
+    const parsed = rawInput === generate._lastInput ? getEditedParsedFields(parsedBase) : parsedBase;
     const entries = getListDrivenOverrides();
+    generate._lastInput = rawInput;
     const config = buildConfig(parsed, entries);
     const advancedConfig = buildAdvancedConfig(parsed, entries);
 

@@ -48,10 +48,10 @@
             Local proxy starting port
             <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
           </label>
-          <label>
-            Outbound source
-            <input value="list.json (GitHub repository)" readonly />
-          </label>
+          <div class="field-note">
+            <span>Outbound source</span>
+            <strong>list.json (GitHub repository)</strong>
+          </div>
           <label>
             Log level
             <select id="logLevel">
@@ -119,17 +119,17 @@
             <p>Populated after parsing.</p>
           </div>
         </div>
-        <dl id="fields" class="fields">
-          <div><dt>UUID</dt><dd>—</dd></div>
-          <div><dt>Address</dt><dd>—</dd></div>
-          <div><dt>Port</dt><dd>—</dd></div>
-          <div><dt>Transport</dt><dd>—</dd></div>
-          <div><dt>Security</dt><dd>—</dd></div>
-          <div><dt>SNI</dt><dd>—</dd></div>
-          <div><dt>WS Host</dt><dd>—</dd></div>
-          <div><dt>WS Path</dt><dd>—</dd></div>
-          <div><dt>Remark</dt><dd>—</dd></div>
-        </dl>
+        <div id="fields" class="fields" aria-live="polite">
+          <label>UUID<input id="fieldUuid" data-field="uuid" value="" /></label>
+          <label>Address<input id="fieldAddress" data-field="address" value="" /></label>
+          <label>Port<input id="fieldPort" data-field="port" type="number" min="1" max="65535" value="443" /></label>
+          <label>Transport<input id="fieldTransport" data-field="transport" value="tcp" /></label>
+          <label>Security<input id="fieldSecurity" data-field="security" value="none" /></label>
+          <label>SNI<input id="fieldSni" data-field="sni" value="" /></label>
+          <label>WS Host<input id="fieldWsHost" data-field="wsHost" value="" /></label>
+          <label>WS Path<input id="fieldWsPath" data-field="wsPath" value="/" /></label>
+          <label>Remark<input id="fieldRemark" data-field="remark" value="" /></label>
+        </div>
       </div>
     </section>
 
