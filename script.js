@@ -698,13 +698,50 @@ function buildAdvancedConfig(parsed, listEntries) {
   if (parsed.security !== "tls") {
     throw new Error("The advanced fingerprint + fragment + cipherSuites config requires security=tls.");
   }
-  // This config deliberately follows the supplied FinalMask example instead of
-  // cloning the normal generator. It has exactly one VLESS outbound, with no
-  // burstObservatory and no sniSpoof blocks.
-  // Advanced config must connect directly to the VLESS endpoint from the input URL.
-  // Do not use the local proxy host/port fields here.
-  const targetAddress = parsed.address;
-  const targetPort = parsed.port;
+
+  const advancedOutbound = {
+    mux: {
+      concurrency: -1,
+      enabled: false
+    },
+    protocol: "vless",
+    settings: {
+      vnext: [
+        {
+          address: parsed.address,
+          port: parsed.port,
+          users: [
+            {
+              encryption: parsed.encryption || "none",
+              ...(parsed.flow ? { flow: parsed.flow } : {}),
+              id: parsed.uuid,
+              level: 8
+            }
+          ]
+        }
+      ]
+    },
+    streamSettings: {
+      network: parsed.transport,
+      security: "tls",
+      tlsSettings: {
+        allowInsecure: false,
+        alpn: parsed.alpn.length ? parsed.alpn : ["http/1.1"],
+        fingerprint: ADVANCED_FINGERPRINT,
+        serverName: parsed.sni,
+        cipherSuites: ADVANCED_CIPHER_SUITES,
+        show: false
+      },
+      ...(parsed.transport === "ws" ? {
+        wsSettings: {
+          headers: { Host: parsed.wsHost },
+          path: parsed.wsPath
+        }
+      } : {}),
+      finalmask: JSON.parse(JSON.stringify(ADVANCED_FINALMASK))
+    },
+    tag: "AutoOut"
+  };
 
   return {
     dns: {
@@ -742,50 +779,16 @@ function buildAdvancedConfig(parsed, listEntries) {
       loglevel: valueOf(els.logLevel, "warning")
     },
     outbounds: [
+      advancedOutbound,
       {
-        mux: {
-          concurrency: -1,
-          enabled: false
-        },
-        protocol: "vless",
-        settings: {
-          vnext: [
-            {
-              address: targetAddress,
-              port: targetPort,
-              users: [
-                {
-                  encryption: parsed.encryption || "none",
-                  ...(parsed.flow ? { flow: parsed.flow } : {}),
-                  id: parsed.uuid,
-                  level: 8
-                }
-              ]
-            }
-          ]
-        },
-        streamSettings: {
-          network: parsed.transport,
-          security: "tls",
-          tlsSettings: {
-            allowInsecure: false,
-            alpn: ["http/1.1"],
-            fingerprint: ADVANCED_FINGERPRINT,
-            serverName: parsed.sni,
-            cipherSuites: ADVANCED_CIPHER_SUITES,
-            show: false
-          },
-          ...(parsed.transport === "ws" ? {
-            wsSettings: {
-              headers: {
-                Host: parsed.wsHost || parsed.sni
-              },
-              path: parsed.wsPath
-            }
-          } : {}),
-          finalmask: JSON.parse(JSON.stringify(ADVANCED_FINALMASK))
-        },
-        tag: "AutoOut"
+        protocol: "freedom",
+        settings: { domainStrategy: "UseIP" },
+        tag: "direct"
+      },
+      {
+        protocol: "blackhole",
+        settings: { response: { type: "http" } },
+        tag: "block"
       }
     ],
     remarks: parsed.remark,
@@ -793,12 +796,88 @@ function buildAdvancedConfig(parsed, listEntries) {
       domainStrategy: "IfIpNonMatch",
       rules: [
         {
-          outboundTag: "AutoOut"
+          ip: ["8.8.8.8", "8.8.4.4", "2001:4860:4860::8888"],
+          outboundTag: "AutoOut",
+          port: "53",
+          type: "field",
+          enabled: true
+        },
+        {
+          ip: ["2620:119:35::35"],
+          outboundTag: "direct",
+          port: "53",
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "block",
+          port: "443",
+          network: "udp",
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "block",
+          domain: ["geosite:category-ads-all"],
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "block",
+          ip: [
+            "10.10.34.0/24",
+            "2001:4188:2:600:10:10:34:36",
+            "2001:4188:2:600:10:10:34:35",
+            "2001:4188:2:600:10:10:34:34"
+          ],
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "direct",
+          ip: ["geoip:private"],
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "direct",
+          domain: ["geosite:private"],
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "direct",
+          ip: ["geoip:ir"],
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "direct",
+          domain: ["domain:.ir", "geosite:category-ir"],
+          type: "field",
+          enabled: true
+        },
+        {
+          type: "field",
+          domain: ["domain:workers.dev"],
+          path: ["regexp:^/QR/.*"],
+          outboundTag: "direct"
+        },
+        {
+          outboundTag: "direct",
+          protocol: ["bittorrent"],
+          type: "field",
+          enabled: true
+        },
+        {
+          outboundTag: "AutoOut",
+          port: "0-65535"
         }
       ]
     }
   };
 }
+
 function renderAdvancedConfig() {
   if (!els.advancedOutput) return;
 
