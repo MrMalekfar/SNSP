@@ -154,18 +154,12 @@
         <div class="section-head">
           <div>
             <h2>V2Box Single Configs</h2>
-            <p>One complete JSON config per IP/SNI pair, returned as a JSON array.</p>
-          </div>
-          <div class="actions">
-            <button id="copyV2boxBtn" class="secondary" type="button">Copy Array</button>
-            <button id="downloadV2boxBtn" class="secondary" type="button">Download .json</button>
+            <p>Each IP/SNI pair is shown as an independent V2Box JSON config with its own copy button.</p>
           </div>
         </div>
-        <pre id="v2boxOutput" aria-label="V2Box single configs"><code>[
-  {
-    "message": "Generate JSON to build the V2Box array."
-  }
-]</code></pre>
+        <div id="v2boxOutput" class="v2box-config-list" aria-label="V2Box single configs">
+          <div class="v2box-empty">Generate JSON to build the V2Box configs.</div>
+        </div>
       </div>
     </section>
 

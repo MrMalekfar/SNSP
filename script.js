@@ -13,8 +13,6 @@ const els = {
   download: $("downloadBtn"),
   output: $("output"),
   v2boxOutput: $("v2boxOutput"),
-  copyV2box: $("copyV2boxBtn"),
-  downloadV2box: $("downloadV2boxBtn"),
   status: $("status"),
   fields: $("fields"),
   proxyAddress: $("proxyAddress"),
@@ -621,14 +619,14 @@ async function generate() {
     lastV2boxConfigs = buildV2boxConfigs(parsed);
     setDetectedFields(parsed);
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
-    if (els.v2boxOutput) els.v2boxOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(lastV2boxConfigs, null, 2))}</code>`;
+    renderV2boxConfigs(lastV2boxConfigs);
     console.info("Generated list-driven proxy outbounds:", entries);
     setStatus(`Generated ${entries.length} proxy outbounds directly from list.json: ${entries.map((x) => `${x.tag} (${x.fakeSni} → ${x.spoofIp})`).join(", ")}.`, "success");
   } catch (error) {
     lastConfig = null;
     lastV2boxConfigs = null;
     if (els.v2boxOutput) {
-      els.v2boxOutput.innerHTML = `<code>${escapeHtml(JSON.stringify({ message: "Generate JSON to build the V2Box array." }, null, 2))}</code>`;
+      els.v2boxOutput.innerHTML = `<div class="v2box-empty">Generate JSON to build the V2Box configs.</div>`;
     }
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
   }
@@ -647,36 +645,42 @@ async function copyJson() {
   }
 }
 
-async function copyV2boxJson() {
-  if (!lastV2boxConfigs) {
+function renderV2boxConfigs(configs) {
+  if (!els.v2boxOutput) return;
+  if (!Array.isArray(configs) || configs.length === 0) {
+    els.v2boxOutput.innerHTML = `<div class="v2box-empty">No V2Box configs were generated.</div>`;
+    return;
+  }
+
+  els.v2boxOutput.innerHTML = configs.map((config, index) => {
+    const label = config?.outbounds?.find((item) => item?.tag === "proxy")?.sniSpoof?.fakeSni || `Config ${index + 1}`;
+    const body = JSON.stringify(config, null, 2);
+    return `
+      <article class="v2box-config-item">
+        <div class="v2box-config-head">
+          <div>
+            <h3>V2Box Config ${index + 1}</h3>
+            <span>${escapeHtml(label)}</span>
+          </div>
+          <button class="secondary v2box-copy-btn" type="button" data-v2box-index="${index}">Copy</button>
+        </div>
+        <pre><code>${escapeHtml(body)}</code></pre>
+      </article>
+    `;
+  }).join("");
+}
+
+async function copyV2boxConfig(index) {
+  if (!Array.isArray(lastV2boxConfigs) || !lastV2boxConfigs[index]) {
     setStatus("Generate JSON first.", "error");
     return;
   }
   try {
-    await navigator.clipboard.writeText(JSON.stringify(lastV2boxConfigs, null, 2));
-    setStatus("V2Box JSON array copied to clipboard.", "success");
+    await navigator.clipboard.writeText(JSON.stringify(lastV2boxConfigs[index], null, 2));
+    setStatus(`V2Box Config ${index + 1} copied to clipboard.`, "success");
   } catch {
     setStatus("Clipboard access was blocked by the browser.", "error");
   }
-}
-
-function downloadV2boxJson() {
-  if (!lastV2boxConfigs) {
-    setStatus("Generate JSON first.", "error");
-    return;
-  }
-  const blob = new Blob([JSON.stringify(lastV2boxConfigs, null, 2)], {
-    type: "application/json;charset=utf-8"
-  });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "v2box-single-configs.json";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-  setStatus("V2Box JSON array downloaded.", "success");
 }
 
 function downloadJson() {
@@ -701,8 +705,13 @@ function downloadJson() {
 if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
 if (els.copy) els.copy.addEventListener("click", copyJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
-if (els.copyV2box) els.copyV2box.addEventListener("click", copyV2boxJson);
-if (els.downloadV2box) els.downloadV2box.addEventListener("click", downloadV2boxJson);
+if (els.v2boxOutput) {
+  els.v2boxOutput.addEventListener("click", (event) => {
+    const button = event.target.closest(".v2box-copy-btn");
+    if (!button) return;
+    copyV2boxConfig(Number(button.dataset.v2boxIndex));
+  });
+}
 if (els.sample) els.sample.addEventListener("click", async () => {
   if (els.input) els.input.value = sampleVless;
   try {
