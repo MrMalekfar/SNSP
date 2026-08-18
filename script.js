@@ -371,7 +371,7 @@ function buildConfig(parsed, listEntries) {
     routing: {
       // Keep routing domain handling exactly as requested: do not resolve domains
       // to IPs just to perform a second routing pass.
-      domainStrategy: "AsIs",
+      domainStrategy: "IPIfNonMatch",
       rules: [
         {
           ip: [
@@ -381,7 +381,8 @@ function buildConfig(parsed, listEntries) {
           ],
           balancerTag: "all",
           port: "53",
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           ip: [
@@ -389,20 +390,23 @@ function buildConfig(parsed, listEntries) {
           ],
           outboundTag: "direct",
           port: "53",
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "block",
           port: "443",
           network: "udp",
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "block",
           domain: [
             "geosite:category-ads-all"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "block",
@@ -412,28 +416,32 @@ function buildConfig(parsed, listEntries) {
             "2001:4188:2:600:10:10:34:35",
             "2001:4188:2:600:10:10:34:34"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "direct",
           ip: [
             "geoip:private"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "direct",
           domain: [
             "geosite:private"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "direct",
           ip: [
             "geoip:ir"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "direct",
@@ -441,16 +449,17 @@ function buildConfig(parsed, listEntries) {
             "domain:.ir",
             "geosite:category-ir"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           outboundTag: "direct",
           domain: [
             "domain:workers.dev"
           ],
-          attrs: {
-            ":path": "regexp:^/QR/.*"
-          },
+        "path": [
+          "regexp:^/QR/.*"
+          ],
           type: "field"
         },
         {
@@ -458,7 +467,8 @@ function buildConfig(parsed, listEntries) {
           protocol: [
             "bittorrent"
           ],
-          type: "field"
+          type: "field",
+          "enabled": true
         },
         {
           balancerTag: "all",
