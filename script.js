@@ -220,7 +220,7 @@ function getListDrivenOverrides() {
 
 
 function buildOutbound(parsed, override, index) {
-  const proxyPort = numberValueOf(els.proxyPort, 41105) ;
+  const proxyPort = numberValueOf(els.proxyPort, 41105) + index;
 
   return {
     mux: {
@@ -328,7 +328,7 @@ function buildConfig(parsed, listEntries) {
       pingConfig: {
         destination: valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim(),
         connectivity: valueOf(els.observatoryConnectivity).trim(),
-        interval: valueOf(els.observatoryInterval, "20m").trim(),
+        interval: valueOf(els.observatoryInterval, "1m").trim(),
         sampling,
         timeout: valueOf(els.observatoryTimeout, "3s").trim(),
         httpMethod: valueOf(els.observatoryHttpMethod, "HEAD")
