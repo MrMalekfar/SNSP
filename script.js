@@ -398,7 +398,7 @@ function buildOutbound(parsed, override, index) {
       security: parsed.security,
       tlsSettings: {
         allowInsecure: parsed.allowInsecure,
-        ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
+        alpn: ["http/1.1"], //...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
         ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
         serverName: parsed.sni,
         show: false
