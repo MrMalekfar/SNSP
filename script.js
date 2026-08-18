@@ -28,7 +28,18 @@ const els = {
   observatoryInterval: $("observatoryInterval"),
   observatorySampling: $("observatorySampling"),
   observatoryTimeout: $("observatoryTimeout"),
-  observatoryHttpMethod: $("observatoryHttpMethod")
+  observatoryHttpMethod: $("observatoryHttpMethod"),
+  tlsFingerprint: $("tlsFingerprint"),
+  tlsCipherSuites: $("tlsCipherSuites"),
+  fragmentPackets: $("fragmentPackets"),
+  fragmentLengths: $("fragmentLengths"),
+  fragmentDelays: $("fragmentDelays"),
+  fragmentMaxSplit: $("fragmentMaxSplit"),
+  fragment2Packets: $("fragment2Packets"),
+  fragment2Lengths: $("fragment2Lengths"),
+  fragment2Delays: $("fragment2Delays"),
+  fragment2MaxSplit: $("fragment2MaxSplit"),
+  tlsFragmentOutput: $("tlsFragmentOutput")
 };
 
 function valueOf(el, fallback = "") {
@@ -150,7 +161,7 @@ function parseVless(raw) {
   const wsHost = params.get("host") || sni;
   const wsPath = params.get("path") || "/";
   const alpn = (params.get("alpn") || "").split(",").map((x) => x.trim()).filter(Boolean);
-  const fingerprint = params.get("fp") || "";
+  const fingerprint = params.get("fp") || valueOf(els.tlsFingerprint, "unsafe").trim();
   const encryption = params.get("encryption") || "none";
   const insecureRaw = params.get("allowInsecure") ?? params.get("insecure") ?? "0";
   const allowInsecure = ["1", "true", "yes"].includes(String(insecureRaw).toLowerCase());
@@ -225,6 +236,56 @@ function getListDrivenOverrides() {
 }
 
 
+
+function csvList(value, fallback = []) {
+  const items = String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items.length ? items : fallback;
+}
+
+function buildTlsExtras() {
+  const fingerprint = valueOf(els.tlsFingerprint, "unsafe").trim() || "unsafe";
+  const cipherSuites = valueOf(
+    els.tlsCipherSuites,
+    "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
+  ).trim();
+
+  const fragmentEnabled = valueOf(els.fragmentPackets, "tlshello").trim() !== "";
+  const packets = valueOf(els.fragmentPackets, "tlshello").trim();
+  const lengths = csvList(valueOf(els.fragmentLengths, "5,94,1"));
+  const delays = csvList(valueOf(els.fragmentDelays, "0"));
+  const maxSplit = valueOf(els.fragmentMaxSplit, "0").trim() || "0";
+  const secondPackets = valueOf(els.fragment2Packets, "1-1").trim();
+  const secondLengths = csvList(valueOf(els.fragment2Lengths, "109,1"));
+  const secondDelays = csvList(valueOf(els.fragment2Delays, "1"));
+  const secondMaxSplit = valueOf(els.fragment2MaxSplit, "355").trim() || "355";
+
+  return {
+    fingerprint,
+    cipherSuites,
+    fragment: {
+      enabled: fragmentEnabled,
+      tcp: [
+        { packets, lengths, delays, maxSplit },
+        { packets: secondPackets, lengths: secondLengths, delays: secondDelays, maxSplit: secondMaxSplit }
+      ]
+    }
+  };
+}
+
+function renderTlsFragmentOutput(extras) {
+  if (!els.tlsFragmentOutput) return;
+  els.tlsFragmentOutput.innerHTML = `
+    <div><dt>Fingerprint</dt><dd><code>${escapeHtml(extras.fingerprint || "—")}</code></dd></div>
+
+    <div><dt>Fragment #1</dt><dd><code>${escapeHtml(JSON.stringify(extras.fragment.tcp[0]))}</code></dd></div>
+    <div><dt>Fragment #2</dt><dd><code>${escapeHtml(JSON.stringify(extras.fragment.tcp[1]))}</code></dd></div>
+    <div><dt>Cipher suites</dt><dd><code>${escapeHtml(extras.cipherSuites || "—")}</code></dd></div>
+  `;
+}
+
 function buildOutbound(parsed, override, index) {
   const proxyPort = numberValueOf(els.proxyPort, 41105);
 
@@ -264,12 +325,21 @@ function buildOutbound(parsed, override, index) {
         ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
         ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
         serverName: parsed.sni,
+        cipherSuites: buildTlsExtras().cipherSuites,
         show: false
       },
       ...(parsed.transport === "ws" ? {
         wsSettings: {
           headers: { Host: parsed.wsHost },
           path: parsed.wsPath
+        }
+      } : {}),
+      ...(buildTlsExtras().fragment.enabled ? {
+        finalmask: {
+          tcp: buildTlsExtras().fragment.tcp.map((fragmentRule) => ({
+            type: "fragment",
+            settings: fragmentRule
+          }))
         }
       } : {})
     },
@@ -443,6 +513,7 @@ function buildConfig(parsed, listEntries) {
   const targetCount = listEntries.length;
   const selector = valueOf(els.observatorySelector, "AutoOut_").trim();
   const sampling = numberValueOf(els.observatorySampling, 3);
+  const tlsExtras = buildTlsExtras();
 
   if (!proxyAddress) throw new Error("Local proxy address cannot be empty.");
   if (!Number.isInteger(proxyStartPort) || proxyStartPort < 1 || proxyStartPort + targetCount - 1 > 65535) {
@@ -667,8 +738,11 @@ async function generate() {
     const entries = getListDrivenOverrides();
     const config = buildConfig(parsed, entries);
     lastConfig = config;
+    renderTlsFragmentOutput(buildTlsExtras());
     lastV2boxConfigs = buildV2boxConfigs(parsed);
     setDetectedFields(parsed);
+    if (els.tlsFingerprint && parsed.fingerprint) els.tlsFingerprint.value = parsed.fingerprint;
+    renderTlsFragmentOutput(buildTlsExtras());
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
     renderV2boxConfigs();
     console.info("Generated list-driven proxy outbounds:", entries);
