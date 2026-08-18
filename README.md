@@ -16,7 +16,7 @@ The primary workflow stays focused on the VLESS link. Optional configuration con
 A complete multi-outbound Xray configuration built from the current VLESS input, the template settings, and the outbound sources in `list.json`.
 
 ### Advanced Xray profile
-A standalone one-outbound profile using the project’s advanced fingerprint, Fragment, and cipher-suite configuration. This profile is generated only when the input link uses TLS.
+A 20-outbound profile generated only for TLS VLESS links. Each outbound uses the same UUID, port, TLS, transport, Fragment, and cipher-suite settings; only the `address` changes. Addresses are selected randomly, without replacement, from the `merged` array in `https://github.com/MrMalekfar/Lists/blob/main/merged_lists.json`. The profile uses Burst Observatory plus a `leastLoad` balancer tagged `all`, matching the main Generated Xray routing model.
 
 ### V2Box profiles
 Independent JSON profiles are presented one at a time so each profile can be copied or imported without depending on a combined array wrapper. The UI shows up to 10 profiles.
@@ -30,6 +30,7 @@ The optional **Review & configuration** workspace contains:
 - Log level
 - Outbound sources loaded from `list.json`
 - Burst Observatory settings
+- Advanced Xray address generation from the GitHub `merged` list
 
 These controls are hidden by default to keep the main workflow compact.
 

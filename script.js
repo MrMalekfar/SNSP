@@ -1,4 +1,6 @@
 const MAX_V2BOX_CONFIGS = 10;
+const ADVANCED_OUTBOUND_COUNT = 20;
+const ADVANCED_ADDRESS_SOURCE = 'https://raw.githubusercontent.com/MrMalekfar/Lists/main/merged_lists.json';
 let sourceListCount = 0;
 
 const sampleVless =
@@ -79,6 +81,54 @@ const ADVANCED_FINALMASK = {
 };
 
 let sniList = [];
+
+async function loadAdvancedAddresses() {
+  const res = await fetch(`${ADVANCED_ADDRESS_SOURCE}?v=${Date.now()}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Could not load the Advanced address list from GitHub (HTTP ${res.status}).`);
+  }
+
+  const data = await res.json();
+  const addresses = Array.isArray(data?.merged)
+    ? data.merged
+        .map((value) => String(value ?? "").trim())
+        .filter(isValidIpAddress)
+    : [];
+
+  if (addresses.length < ADVANCED_OUTBOUND_COUNT) {
+    throw new Error(`The GitHub "merged" list must contain at least ${ADVANCED_OUTBOUND_COUNT} addresses.`);
+  }
+
+  return shuffle(addresses).slice(0, ADVANCED_OUTBOUND_COUNT);
+}
+
+function isValidIpAddress(value) {
+  const ipv4Parts = value.split(".");
+  if (ipv4Parts.length === 4 && ipv4Parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255)) {
+    return true;
+  }
+
+  if (!value.includes(":") || !/^[0-9A-Fa-f:]+$/.test(value)) {
+    return false;
+  }
+
+  const groups = value.split(":");
+  const hasCompression = value.includes("::");
+  const nonEmptyGroups = groups.filter(Boolean);
+
+  return nonEmptyGroups.length <= 8 &&
+    nonEmptyGroups.every((group) => /^[0-9A-Fa-f]{1,4}$/.test(group)) &&
+    (hasCompression ? groups.length <= 9 : groups.length === 8);
+}
+
+function shuffle(values) {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[randomIndex]] = [copy[randomIndex], copy[index]];
+  }
+  return copy;
+}
 
 async function loadSniList() {
   const url = `./list.json?v=${Date.now()}`;
@@ -746,12 +796,13 @@ function buildConfig(parsed, listEntries) {
 }
 
 
-function buildAdvancedConfig(parsed, listEntries) {
+async function buildAdvancedConfig(parsed) {
   if (parsed.security !== "tls") {
     throw new Error("The advanced Xray profile requires security=tls in the input link.");
   }
 
-  const advancedOutbound = {
+  const advancedAddresses = await loadAdvancedAddresses();
+  const advancedOutbounds = advancedAddresses.map((address, index) => ({
     mux: {
       concurrency: -1,
       enabled: false
@@ -760,7 +811,7 @@ function buildAdvancedConfig(parsed, listEntries) {
     settings: {
       vnext: [
         {
-          address: parsed.address,
+          address,
           port: parsed.port,
           users: [
             {
@@ -792,8 +843,8 @@ function buildAdvancedConfig(parsed, listEntries) {
       } : {}),
       finalmask: JSON.parse(JSON.stringify(ADVANCED_FINALMASK))
     },
-    tag: "AutoOut"
-  };
+    tag: `AutoOut_${index + 1}`
+  }));
 
   return {
     dns: {
@@ -830,8 +881,19 @@ function buildAdvancedConfig(parsed, listEntries) {
     log: {
       loglevel: valueOf(els.logLevel, "warning")
     },
+    burstObservatory: {
+      subjectSelector: [valueOf(els.observatorySelector, "AutoOut_").trim()],
+      pingConfig: {
+        destination: valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim(),
+        connectivity: valueOf(els.observatoryConnectivity).trim(),
+        interval: valueOf(els.observatoryInterval, "1m").trim(),
+        sampling: numberValueOf(els.observatorySampling, 3),
+        timeout: valueOf(els.observatoryTimeout, "3s").trim(),
+        httpMethod: valueOf(els.observatoryHttpMethod, "HEAD")
+      }
+    },
     outbounds: [
-      advancedOutbound,
+      ...advancedOutbounds,
       {
         protocol: "freedom",
         settings: { domainStrategy: "UseIP" },
@@ -843,13 +905,27 @@ function buildAdvancedConfig(parsed, listEntries) {
         tag: "block"
       }
     ],
+    policy: {
+      levels: {
+        "8": {
+          connIdle: 300,
+          downlinkOnly: 1,
+          handshake: 4,
+          uplinkOnly: 1
+        }
+      },
+      system: {
+        statsOutboundUplink: true,
+        statsOutboundDownlink: true
+      }
+    },
     remarks: parsed.remark,
     routing: {
-      domainStrategy: "IfIpNonMatch",
+      domainStrategy: "IPIfNonMatch",
       rules: [
         {
           ip: ["8.8.8.8", "8.8.4.4", "2001:4860:4860::8888"],
-          outboundTag: "AutoOut",
+          balancerTag: "all",
           port: "53",
           type: "field",
           enabled: true
@@ -922,11 +998,22 @@ function buildAdvancedConfig(parsed, listEntries) {
           enabled: true
         },
         {
-          outboundTag: "AutoOut",
+          balancerTag: "all",
           port: "0-65535"
         }
+      ],
+      balancers: [
+        {
+          tag: "all",
+          selector: ["AutoOut_"],
+          strategy: {
+            type: "leastLoad"
+          },
+          fallbackTag: "AutoOut_1"
+        }
       ]
-    }
+    },
+    stats: {}
   };
 }
 
@@ -965,7 +1052,7 @@ async function generate() {
     const entries = getListDrivenOverrides();
     generate._lastInput = rawInput;
     const config = buildConfig(parsed, entries);
-    const advancedConfig = buildAdvancedConfig(parsed, entries);
+    const advancedConfig = await buildAdvancedConfig(parsed);
 
     lastConfig = config;
     lastAdvancedConfig = advancedConfig;
@@ -975,6 +1062,7 @@ async function generate() {
     renderAdvancedConfig();
     renderV2boxConfigs();
     console.info("Generated outbound entries:", entries);
+    console.info("Generated advanced AutoOut addresses:", advancedConfig.outbounds.slice(0, ADVANCED_OUTBOUND_COUNT).map((outbound) => outbound.settings.vnext[0].address));
     const capped = sourceListCount > MAX_V2BOX_CONFIGS ? ` (showing first ${MAX_V2BOX_CONFIGS} of ${sourceListCount})` : "";
     setStatus(`Generated ${entries.length} outbound entries, an advanced Xray profile, and ${lastV2boxConfigs.length} V2Box profiles from list.json${capped}.`, "success");
   } catch (error) {
