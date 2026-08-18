@@ -11,29 +11,29 @@
   <main class="container">
     <header class="hero">
       <div>
-        <p class="eyebrow">CLIENT-SIDE TOOL · NO UPLOAD</p>
+        <p class="eyebrow">BROWSER-BASED CONFIGURATION TOOL · NO UPLOAD</p>
         <h1>VLESS Configuration Studio</h1>
         <p class="subtitle">
-          Turn a <code>vless://</code> link into ready-to-use Xray and V2Box JSON configurations.
-          Everything runs locally in your browser.
+          Convert a <code>vless://</code> link into ready-to-use Xray and V2Box configurations.
+          Your input stays in the browser while you review, generate, copy, or export the result.
         </p>
       </div>
-      <button id="sampleBtn" class="secondary hero-action" type="button">Load example</button>
+      <button id="sampleBtn" class="secondary hero-action" type="button" >Load sample</button>
     </header>
 
     <section class="card input-card workflow-card">
       <div class="step-heading">
         <span class="step-number">01</span>
         <div>
-          <div class="step-title">Input</div>
-          <div class="step-copy">Start with a VLESS link. The studio parses it and prepares your configuration.</div>
+          <div class="step-title">Start with a VLESS link</div>
+          <div class="step-copy">Paste a <code>vless://</code> link to parse its connection settings.</div>
         </div>
       </div>
-      <label for="vlessInput">VLESS configuration link</label>
+      <label for="vlessInput">VLESS URL</label>
       <textarea id="vlessInput" rows="2" spellcheck="false" placeholder="vless://UUID@host:443?type=ws&security=tls&path=%2F...&host=example.com&sni=example.com#Remark"></textarea>
       <div class="row">
         <span id="status" class="status" aria-live="polite"></span>
-        <button id="generateBtn" class="primary generate-btn" type="button">Generate configuration</button>
+        <button id="generateBtn" class="primary generate-btn" type="button">Generate configurations</button>
       </div>
     </section>
 
@@ -43,8 +43,8 @@
         <span class="configuration-summary-left">
           <span class="step-number">02</span>
           <span>
-            <strong>Configuration workspace</strong>
-            <small>PARSED DATA · TEMPLATE · OUTBOUND SOURCES · ADVANCED OPTIONS</small>
+            <strong>Review &amp; configuration</strong>
+            <small>DETECTED VALUES · TEMPLATE SETTINGS · OUTBOUND SOURCES · ADVANCED OPTIONS</small>
           </span>
         </span>
         <span class="configuration-summary-right">
@@ -59,20 +59,20 @@
             <div>
               <div class="eyebrow local-eyebrow">PARSED DATA</div>
               <h2>Detected VLESS values</h2>
-              <p>Review the values parsed from your VLESS link. Edit only when you need a deliberate override.</p>
+              <p>These fields are populated from the link. Review or adjust them only when the source requires a manual correction.</p>
             </div>
             <span class="badge">Parsed</span>
           </div>
           <div id="fields" class="fields" aria-live="polite">
             <label>UUID<input id="fieldUuid" data-field="uuid" value="" /></label>
-            <label>Server address<input id="fieldAddress" data-field="address" value="" /></label>
-            <label>Server port<input id="fieldPort" data-field="port" type="number" min="1" max="65535" value="443" /></label>
+            <label>Address<input id="fieldAddress" data-field="address" value="" /></label>
+            <label>Port<input id="fieldPort" data-field="port" type="number" min="1" max="65535" value="443" /></label>
             <label>Transport<input id="fieldTransport" data-field="transport" value="tcp" /></label>
             <label>Security<input id="fieldSecurity" data-field="security" value="none" /></label>
             <label>SNI<input id="fieldSni" data-field="sni" value="" /></label>
-            <label>WebSocket host<input id="fieldWsHost" data-field="wsHost" value="" /></label>
-            <label>WebSocket path<input id="fieldWsPath" data-field="wsPath" value="/" /></label>
-            <label>Profile name<input id="fieldRemark" data-field="remark" value="" /></label>
+            <label>WS Host<input id="fieldWsHost" data-field="wsHost" value="" /></label>
+            <label>WS Path<input id="fieldWsPath" data-field="wsPath" value="/" /></label>
+            <label>Remark<input id="fieldRemark" data-field="remark" value="" /></label>
           </div>
         </div>
 
@@ -80,8 +80,8 @@
           <div class="section-head">
             <div>
               <div class="eyebrow local-eyebrow">TEMPLATE</div>
-              <h2>Configuration defaults</h2>
-              <p>Define the local proxy and runtime defaults used by the generated configuration.</p>
+              <h2>Template settings</h2>
+              <p>These settings are applied to the generated Xray configuration.</p>
             </div>
           </div>
 
@@ -91,12 +91,12 @@
               <input id="proxyAddress" value="127.0.0.1" />
             </label>
             <label>
-              Local proxy port
+              Local proxy starting port
               <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
             </label>
             <div class="field-note">
               <span>Source</span>
-              <strong>list.json</strong>
+              <strong>list.json · project file</strong>
             </div>
             <label>
               Log level
@@ -112,10 +112,10 @@
           <div class="section-head subhead">
             <div>
               <div class="eyebrow local-eyebrow">OUTBOUND SOURCES</div>
-              <h2>Outbound sources</h2>
-              <p>Each source entry becomes an outbound. SNI and IP values are loaded from <code>list.json</code>.</p>
+              <h2>Outbound entries</h2>
+              <p>Each entry creates one outbound. SNI and IP values are loaded from <code>list.json</code> and can be reviewed before generation.</p>
             </div>
-            <span class="badge">Source list</span>
+            <span class="badge">Source-driven</span>
           </div>
           <div id="outboundRows" class="outbound-rows"></div>
 
@@ -128,16 +128,16 @@
               <div class="section-head subhead">
                 <div>
                   <h2>Burst Observatory</h2>
-                  <p>Configure optional outbound health observation and sampling.</p>
+                  <p>Controls how Xray periodically checks outbounds whose tags match the selected prefix.</p>
                 </div>
               </div>
               <div class="form-grid">
                 <label>
-                  Outbound selector
+                  Subject selector
                   <input id="observatorySelector" value="AutoOut_" />
                 </label>
                 <label>
-                  Probe destination
+                  Destination
                   <input id="observatoryDestination" value="http://edge.microsoft.com/captiveportal/generate_204" />
                 </label>
                 <label>
@@ -173,18 +173,11 @@
     </section>
 
     <section class="output-workspace">
-      <div class="workspace-intro">
-        <div>
-          <div class="eyebrow output-eyebrow">READY TO USE</div>
-          <h2>Your configurations</h2>
-          <p>Generated locally from the current VLESS input. Copy a complete profile or an individual V2Box configuration.</p>
-        </div>
-      </div>
       <div class="section-banner output-banner">
         <span class="step-number">03</span>
         <div>
-          <div class="step-title">Generated configurations</div>
-          <div class="step-copy">Review, copy, or export the configuration that best fits your workflow.</div>
+          <div class="step-title">Review and export</div>
+          <div class="step-copy">Choose the output format that fits your target client, then copy or download the generated configuration.</div>
         </div>
       </div>
 
@@ -192,43 +185,43 @@
       <div class="card output-card">
         <div class="section-head">
           <div>
-            <div class="eyebrow output-eyebrow">PRIMARY</div>
-            <h2>Generated Xray JSON</h2>
-            <p>Complete multi-outbound Xray configuration, formatted for inspection and use.</p>
+            <div class="eyebrow output-eyebrow">MAIN CONFIGURATION</div>
+            <h2>Generated Xray configuration</h2>
+            <p>A complete multi-outbound Xray configuration, formatted for review and export.</p>
           </div>
           <div class="actions">
-            <button id="copyBtn" class="secondary" type="button">Copy JSON</button>
-            <button id="downloadBtn" class="secondary" type="button">Download .json</button>
+            <button id="copyBtn" class="secondary" type="button">Copy configuration</button>
+            <button id="downloadBtn" class="secondary" type="button">Download JSON</button>
           </div>
         </div>
-        <pre id="output" aria-label="Generated Xray JSON"><code>{
-  "message": "Paste a VLESS configuration link and click Generate configuration."
+        <pre id="output" aria-label="Generated JSON"><code>{
+  "message": "Paste a VLESS link, then generate the configurations."
 }</code></pre>
       </div>
 
       <div class="card output-card advanced-output-card">
         <div class="section-head">
           <div>
-            <div class="eyebrow output-eyebrow">ADVANCED</div>
-            <h2>Advanced Xray · Fingerprint + Fragment + Cipher Suites</h2>
-            <p>A standalone advanced profile using fingerprint, fragment and cipherSuites. No burstObservatory or sniSpoof.</p>
+            <div class="eyebrow output-eyebrow">ADVANCED PROFILE</div>
+            <h2>Advanced Xray profile</h2>
+            <p>A standalone one-outbound profile using the project’s advanced fingerprint, Fragment, and cipher-suite settings.</p>
           </div>
           <div class="actions">
-            <button id="advancedCopy" class="secondary" type="button">Copy JSON</button>
+            <button id="advancedCopy" class="secondary" type="button">Copy configuration</button>
           </div>
         </div>
         <pre id="advancedOutput" aria-label="Advanced Xray JSON"><code>{
-  "message": "Paste a VLESS configuration link and click Generate configuration."
+  "message": "Paste a VLESS link, then generate the configurations."
 }</code></pre>
       </div>
 
       <div class="card output-card v2box-output-card">
         <div class="section-head">
           <div>
-            <div class="eyebrow output-eyebrow">V2BOX</div>
-            <h2>V2Box single profiles</h2>
-            <p>Each profile is an independent JSON configuration, ready to copy individually. Up to 10 profiles.</p>
-            <div class="output-note"><span class="note-dot">●</span> Standalone profiles · no array wrapper</div>
+            <div class="eyebrow output-eyebrow">V2BOX PROFILES</div>
+            <h2>V2Box profiles</h2>
+            <p>Each profile is provided as an independent JSON object for straightforward copy and import. Up to 10 profiles are shown.</p>
+            <div class="output-note"><span class="note-dot">●</span> Independent profiles · no array wrapper</div>
           </div>
         </div>
         <div id="v2boxConfigs" class="v2box-configs" aria-live="polite"></div>
@@ -238,8 +231,8 @@
     </section>
 
     <footer>
-      <span>Runs entirely in your browser · configuration data stays on your device.</span>
-      <span>Built for fast, private, static deployment.</span>
+      <span>Runs in your browser · Configuration data is not uploaded by the UI.</span>
+      <span>Designed for static hosting, including GitHub Pages.</span>
     </footer>
   </main>
 

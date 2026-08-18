@@ -83,11 +83,11 @@ let sniList = [];
 async function loadSniList() {
   const url = `./list.json?v=${Date.now()}`;
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Unable to load list.json (HTTP ${res.status}).`);
+  if (!res.ok) throw new Error(`Could not load list.json (HTTP ${res.status}).`);
 
   const data = await res.json();
   if (!Array.isArray(data)) {
-    throw new Error("list.json must contain a JSON array of { ip, sni } objects.");
+    throw new Error("list.json must contain a JSON array of objects with both ip and sni fields.");
   }
 
   const cleaned = data.map((item, index) => ({
@@ -97,10 +97,10 @@ async function loadSniList() {
 
   const invalid = cleaned.findIndex((item) => !item.ip || !item.sni);
   if (invalid >= 0) {
-    throw new Error(`list.json item ${invalid + 1} must contain both "ip" and "sni".`);
+    throw new Error(`list.json entry ${invalid + 1} must contain both "ip" and "sni".`);
   }
 
-  if (!cleaned.length) throw new Error("list.json is empty; no proxy outbounds can be generated.");
+  if (!cleaned.length) throw new Error("list.json is empty. Add at least one outbound source before generating configurations.");
   sourceListCount = cleaned.length;
   sniList = cleaned.slice(0, MAX_V2BOX_CONFIGS);
   return sniList;
@@ -137,9 +137,9 @@ function escapeHtml(text) {
 
 function parseVless(raw) {
   const value = raw.trim();
-  if (!value) throw new Error("Paste a VLESS URL first.");
-  if (!value.toLowerCase().startsWith("vless:// Application configuration logic.
-    throw new Error("The input must start with vless://");
+  if (!value) throw new Error("Paste a VLESS link to continue.");
+  if (!value.toLowerCase().startsWith("vless://")) {
+    throw new Error("The input must start with vless://.");
   }
 
   const hashIndex = value.indexOf("#");
@@ -147,7 +147,7 @@ function parseVless(raw) {
   const fragment = hashIndex >= 0 ? value.slice(hashIndex + 1) : "";
 
   const atIndex = withoutFragment.indexOf("@", 8);
-  if (atIndex < 0) throw new Error("Invalid VLESS URL: missing @ separator.");
+  if (atIndex < 0) throw new Error("Invalid VLESS link: the server separator (@) is missing.");
 
   const userPart = withoutFragment.slice(8, atIndex);
   const serverPart = withoutFragment.slice(atIndex + 1);
@@ -159,7 +159,7 @@ function parseVless(raw) {
   let portText = "";
   if (serverNoQuery.startsWith("[")) {
     const close = serverNoQuery.indexOf("]");
-    if (close < 0) throw new Error("Invalid IPv6 server address.");
+    if (close < 0) throw new Error("Invalid VLESS link: the IPv6 server address is not valid.");
     address = serverNoQuery.slice(1, close);
     if (serverNoQuery.slice(close + 1, close + 2) === ":") {
       portText = serverNoQuery.slice(close + 2);
@@ -174,7 +174,7 @@ function parseVless(raw) {
 
   const port = Number(portText || 443);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error("Invalid VLESS server port.");
+    throw new Error("Invalid VLESS link: the server port is not valid.");
   }
 
   const params = new URLSearchParams(queryPart);
@@ -192,7 +192,7 @@ function parseVless(raw) {
   const flow = params.get("flow") || "";
   const remark = decodeURIComponent(fragment.replace(/\+/g, " "));
 
-  if (!uuid) throw new Error("Missing VLESS UUID.");
+  if (!uuid) throw new Error("Invalid VLESS link: the UUID is missing.");
 
   return {
     uuid,
@@ -240,7 +240,7 @@ function getEditedParsedFields(parsed) {
 
   const port = Number(get("port", parsed.port));
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error("Detected VLESS Port must be an integer between 1 and 65535.");
+    throw new Error("Port must be an integer between 1 and 65535.");
   }
 
   return {
@@ -287,7 +287,7 @@ function renderOutboundRows() {
 }
 
 function getListDrivenOverrides() {
-  if (!sniList.length) throw new Error("list.json is empty; load it before generating JSON.");
+  if (!sniList.length) throw new Error("No outbound sources are available. Load a valid list.json before generating.");
 
   return sniList.map((item, index) => {
     const read = (field, fallback) => {
@@ -300,9 +300,9 @@ function getListDrivenOverrides() {
     const spoofIp = read("spoofIp", item.ip);
     const targetPort = Number(read("targetPort", "443"));
 
-    if (!tag) throw new Error(`Outbound ${index + 1} tag cannot be empty.`);
-    if (!fakeSni) throw new Error(`Outbound ${index + 1} Fake SNI cannot be empty.`);
-    if (!spoofIp) throw new Error(`Outbound ${index + 1} Spoof IP cannot be empty.`);
+    if (!tag) throw new Error(`Outbound ${index + 1} tag is required.`);
+    if (!fakeSni) throw new Error(`Outbound ${index + 1} SNI value is required.`);
+    if (!spoofIp) throw new Error(`Outbound ${index + 1} IP value is required.`);
     if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
       throw new Error(`Outbound ${index + 1} target port must be between 1 and 65535.`);
     }
@@ -486,7 +486,7 @@ function renderV2boxConfigs() {
   if (!lastV2boxConfigs.length) {
     els.v2boxConfigs.innerHTML = `
       <div class="v2box-empty">
-        <p>Generate JSON to build the individual V2Box configs.</p>
+        <p>Generate the configurations to build the individual V2Box profiles.</p>
       </div>
     `;
     return;
@@ -496,13 +496,13 @@ function renderV2boxConfigs() {
     <article class="v2box-config-card">
       <div class="v2box-config-head">
         <div>
-          <div class="v2box-config-title">V2Box Config ${index + 1}</div>
+          <div class="v2box-config-title">V2Box profile ${index + 1}</div>
           <div class="v2box-config-meta">
             <span>SNI: <code>${escapeHtml(item.entry.sni)}</code></span>
             <span>IP: <code>${escapeHtml(item.entry.ip)}</code></span>
           </div>
         </div>
-        <button class="secondary v2box-copy-btn" type="button" data-index="${index}">Copy JSON</button>
+        <button class="secondary v2box-copy-btn" type="button" data-index="${index}">Copy profile</button>
       </div>
       <pre class="v2box-config-json"><code>${escapeHtml(JSON.stringify(item.config, null, 2))}</code></pre>
     </article>
@@ -512,15 +512,15 @@ function renderV2boxConfigs() {
 async function copyV2boxConfig(index) {
   const item = lastV2boxConfigs[index];
   if (!item) {
-    setStatus("V2Box config is not available.", "error");
+    setStatus("This V2Box profile is not available.", "error");
     return;
   }
 
   try {
     await navigator.clipboard.writeText(JSON.stringify(item.config, null, 2));
-    setStatus(`Copied V2Box Config ${index + 1} to clipboard.`, "success");
+    setStatus(`V2Box profile ${index + 1} copied to the clipboard.`, "success");
   } catch {
-    setStatus("Clipboard access was blocked by the browser.", "error");
+    setStatus("The browser blocked clipboard access.", "error");
   }
 }
 
@@ -531,15 +531,15 @@ function buildConfig(parsed, listEntries) {
   const selector = valueOf(els.observatorySelector, "AutoOut_").trim();
   const sampling = numberValueOf(els.observatorySampling, 3);
 
-  if (!proxyAddress) throw new Error("Local proxy address cannot be empty.");
+  if (!proxyAddress) throw new Error("Local proxy address is required.");
   if (!Number.isInteger(proxyStartPort) || proxyStartPort < 1 || proxyStartPort + targetCount - 1 > 65535) {
-    throw new Error("The starting local proxy port range is invalid.");
+    throw new Error("The starting local proxy port is not valid.");
   }
-  if (!selector) throw new Error("Burst Observatory subject selector cannot be empty.");
+  if (!selector) throw new Error("Burst Observatory subject selector is required.");
   if (!Number.isInteger(sampling) || sampling < 1) throw new Error("Sampling must be at least 1.");
-  if (!valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim()) throw new Error("Burst Observatory destination cannot be empty.");
-  if (!valueOf(els.observatoryInterval, "20m").trim()) throw new Error("Burst Observatory interval cannot be empty.");
-  if (!valueOf(els.observatoryTimeout, "3s").trim()) throw new Error("Burst Observatory timeout cannot be empty.");
+  if (!valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim()) throw new Error("Burst Observatory destination is required.");
+  if (!valueOf(els.observatoryInterval, "20m").trim()) throw new Error("Burst Observatory interval is required.");
+  if (!valueOf(els.observatoryTimeout, "3s").trim()) throw new Error("Burst Observatory timeout is required.");
 
   return {
     dns: {
@@ -622,8 +622,8 @@ function buildConfig(parsed, listEntries) {
     },
     remarks: parsed.remark,
     routing: {
-      // Application configuration logic.
-      // Application configuration logic.
+      // Preserve domain-based routing for the first match; do not resolve domains to IPs
+      // merely to perform a second routing pass.
       domainStrategy: "IPIfNonMatch",
       rules: [
         {
@@ -748,7 +748,7 @@ function buildConfig(parsed, listEntries) {
 
 function buildAdvancedConfig(parsed, listEntries) {
   if (parsed.security !== "tls") {
-    throw new Error("The advanced fingerprint + fragment + cipherSuites config requires security=tls.");
+    throw new Error("The advanced Xray profile requires security=tls in the input link.");
   }
 
   const advancedOutbound = {
@@ -934,7 +934,7 @@ function renderAdvancedConfig() {
   if (!els.advancedOutput) return;
 
   const config = lastAdvancedConfig ?? {
-    message: "Paste a VLESS URL and click Generate JSON."
+    message: "Paste a VLESS link, then generate the configurations."
   };
 
   els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
@@ -942,21 +942,21 @@ function renderAdvancedConfig() {
 
 async function copyAdvancedJson() {
   if (!lastAdvancedConfig) {
-    setStatus("Generate JSON first.", "error");
+    setStatus("Generate the configurations first.", "error");
     return;
   }
 
   try {
     await navigator.clipboard.writeText(JSON.stringify(lastAdvancedConfig, null, 2));
-    setStatus("Copied advanced Xray JSON to clipboard.", "success");
+    setStatus("Advanced Xray configuration copied to the clipboard.", "success");
   } catch {
-    setStatus("Clipboard access was blocked by the browser.", "error");
+    setStatus("The browser blocked clipboard access.", "error");
   }
 }
 
 async function generate() {
   try {
-    // Application configuration logic.
+    // Refresh the source list before each generation so stale in-memory data is never reused.
     await loadSniList();
     renderOutboundRows();
     const rawInput = valueOf(els.input);
@@ -974,9 +974,9 @@ async function generate() {
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
     renderAdvancedConfig();
     renderV2boxConfigs();
-    console.info("Generated list-driven proxy outbounds:", entries);
+    console.info("Generated outbound entries:", entries);
     const capped = sourceListCount > MAX_V2BOX_CONFIGS ? ` (showing first ${MAX_V2BOX_CONFIGS} of ${sourceListCount})` : "";
-    setStatus(`Generated ${entries.length} proxy outbounds, advanced FinalMask JSON, and ${lastV2boxConfigs.length} independent V2Box configs from list.json${capped}.`, "success");
+    setStatus(`Generated ${entries.length} outbound entries, an advanced Xray profile, and ${lastV2boxConfigs.length} V2Box profiles from list.json${capped}.`, "success");
   } catch (error) {
     lastConfig = null;
     lastAdvancedConfig = null;
@@ -989,20 +989,20 @@ async function generate() {
 
 async function copyJson() {
   if (!lastConfig) {
-    setStatus("Generate JSON first.", "error");
+    setStatus("Generate the configurations first.", "error");
     return;
   }
   try {
     await navigator.clipboard.writeText(JSON.stringify(lastConfig, null, 2));
-    setStatus("Copied JSON to clipboard.", "success");
+    setStatus("Generated configuration copied to the clipboard.", "success");
   } catch {
-    setStatus("Clipboard access was blocked by the browser.", "error");
+    setStatus("The browser blocked clipboard access.", "error");
   }
 }
 
 function downloadJson() {
   if (!lastConfig) {
-    setStatus("Generate JSON first.", "error");
+    setStatus("Generate the configurations first.", "error");
     return;
   }
   const blob = new Blob([JSON.stringify(lastConfig, null, 2)], {
@@ -1016,7 +1016,7 @@ function downloadJson() {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
-  setStatus("JSON file downloaded.", "success");
+  setStatus("JSON file downloaded successfully.", "success");
 }
 
 if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
@@ -1038,7 +1038,7 @@ if (els.sample) els.sample.addEventListener("click", async () => {
     renderOutboundRows();
     await generate();
   } catch (error) {
-    setStatus(error instanceof Error ? error.message : "Unable to load list.json.", "error");
+    setStatus(error instanceof Error ? error.message : "Could not load list.json.", "error");
   }
 });
 if (els.input) els.input.addEventListener("keydown", (event) => {
@@ -1051,9 +1051,9 @@ if (els.input) els.input.addEventListener("keydown", (event) => {
     renderOutboundRows();
     renderAdvancedConfig();
     renderV2boxConfigs();
-    const limitNote = sourceListCount > MAX_V2BOX_CONFIGS ? ` Using first ${MAX_V2BOX_CONFIGS} of ${sourceListCount}.` : "";
-    setStatus(`Loaded ${sniList.length} SNI/IP pairs from list.json.${limitNote}`, "success");
+    const limitNote = sourceListCount > MAX_V2BOX_CONFIGS ? ` Showing the first ${MAX_V2BOX_CONFIGS} of ${sourceListCount}.` : "";
+    setStatus(`Loaded ${sniList.length} outbound source entries from list.json.${limitNote}`, "success");
   } catch (error) {
-    setStatus(error instanceof Error ? error.message : "Unable to load list.json.", "error");
+    setStatus(error instanceof Error ? error.message : "Could not load list.json.", "error");
   }
 })();
