@@ -588,7 +588,7 @@ function buildConfig(parsed, listEntries) {
   if (!selector) throw new Error("Burst Observatory subject selector is required.");
   if (!Number.isInteger(sampling) || sampling < 1) throw new Error("Sampling must be at least 1.");
   if (!valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim()) throw new Error("Burst Observatory destination is required.");
-  if (!valueOf(els.observatoryInterval, "20m").trim()) throw new Error("Burst Observatory interval is required.");
+  if (!valueOf(els.observatoryInterval, "5m").trim()) throw new Error("Burst Observatory interval is required.");
   if (!valueOf(els.observatoryTimeout, "3s").trim()) throw new Error("Burst Observatory timeout is required.");
 
   return {
