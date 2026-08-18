@@ -369,35 +369,108 @@ function buildConfig(parsed, listEntries) {
     },
     remarks: parsed.remark,
     routing: {
+      // Keep routing domain handling exactly as requested: do not resolve domains
+      // to IPs just to perform a second routing pass.
       domainStrategy: "AsIs",
       rules: [
         {
-          ip: ["8.8.8.8"],
+          ip: [
+            "8.8.8.8",
+            "8.8.4.4",
+            "2001:4860:4860::8888"
+          ],
+          balancerTag: "all",
+          port: "53",
+          type: "field"
+        },
+        {
+          ip: [
+            "2620:119:35::35"
+          ],
           outboundTag: "direct",
           port: "53",
           type: "field"
         },
         {
-          ip: ["1.1.1.1"],
-          outboundTag: "direct",
-          port: "53",
+          outboundTag: "block",
+          port: "443",
+          network: "udp",
           type: "field"
         },
         {
-          ip: ["223.5.5.5"],
+          outboundTag: "block",
+          domain: [
+            "geosite:category-ads-all"
+          ],
+          type: "field"
+        },
+        {
+          outboundTag: "block",
+          ip: [
+            "10.10.34.0/24",
+            "2001:4188:2:600:10:10:34:36",
+            "2001:4188:2:600:10:10:34:35",
+            "2001:4188:2:600:10:10:34:34"
+          ],
+          type: "field"
+        },
+        {
           outboundTag: "direct",
-          port: "53",
+          ip: [
+            "geoip:private"
+          ],
+          type: "field"
+        },
+        {
+          outboundTag: "direct",
+          domain: [
+            "geosite:private"
+          ],
+          type: "field"
+        },
+        {
+          outboundTag: "direct",
+          ip: [
+            "geoip:ir"
+          ],
+          type: "field"
+        },
+        {
+          outboundTag: "direct",
+          domain: [
+            "domain:.ir",
+            "geosite:category-ir"
+          ],
+          type: "field"
+        },
+        {
+          outboundTag: "direct",
+          domain: [
+            "domain:workers.dev"
+          ],
+          attrs: {
+            ":path": "regexp:^/QR/.*"
+          },
+          type: "field"
+        },
+        {
+          outboundTag: "direct",
+          protocol: [
+            "bittorrent"
+          ],
           type: "field"
         },
         {
           balancerTag: "all",
-          type: "field"
+          port: "0-65535"
         }
       ],
       balancers: [
         {
           tag: "all",
-          selector: ["AutoOut_"],
+          selector: [
+            "AutoOut_"
+          ],
           strategy: {
             type: "leastLoad"
           },
