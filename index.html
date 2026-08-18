@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>VLESS → JSON Converter</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">GitHub Pages · Client-side only</p>
+        <h1>VLESS → JSON Converter</h1>
+        <p class="subtitle">
+          Paste a <code>vless://</code> link and generate the JSON configuration
+          from your template. Nothing is uploaded to a server.
+        </p>
+      </div>
+      <button id="sampleBtn" class="secondary" type="button">Load sample</button>
+    </header>
+
+    <section class="card">
+      <label for="vlessInput">VLESS URL</label>
+      <textarea id="vlessInput" spellcheck="false" placeholder="vless://UUID@host:443?type=ws&security=tls&path=%2F...&host=example.com&sni=example.com#Remark"></textarea>
+      <div class="row">
+        <span id="status" class="status" aria-live="polite"></span>
+        <button id="generateBtn" class="primary" type="button">Generate JSON</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Template options</h2>
+            <p>These values are added to the generated config.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Local proxy address
+            <input id="proxyAddress" value="127.0.0.1" />
+          </label>
+          <label>
+            Local proxy port
+            <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
+          </label>
+          <label>
+            Fake SNI
+            <input id="fakeSni" value="hcaptcha.com" />
+          </label>
+          <label>
+            Spoof IP
+            <input id="spoofIp" value="104.19.229.21" />
+          </label>
+          <label>
+            Target port
+            <input id="targetPort" type="number" min="1" max="65535" value="443" />
+          </label>
+          <label>
+            Log level
+            <select id="logLevel">
+              <option value="warning" selected>warning</option>
+              <option value="info">info</option>
+              <option value="debug">debug</option>
+              <option value="error">error</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Detected VLESS fields</h2>
+            <p>Populated after parsing.</p>
+          </div>
+        </div>
+        <dl id="fields" class="fields">
+          <div><dt>UUID</dt><dd>—</dd></div>
+          <div><dt>Address</dt><dd>—</dd></div>
+          <div><dt>Port</dt><dd>—</dd></div>
+          <div><dt>Transport</dt><dd>—</dd></div>
+          <div><dt>Security</dt><dd>—</dd></div>
+          <div><dt>SNI</dt><dd>—</dd></div>
+          <div><dt>WS Host</dt><dd>—</dd></div>
+          <div><dt>WS Path</dt><dd>—</dd></div>
+          <div><dt>Remark</dt><dd>—</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="card output-card">
+      <div class="section-head">
+        <div>
+          <h2>Generated JSON</h2>
+          <p>Formatted with 2-space indentation.</p>
+        </div>
+        <div class="actions">
+          <button id="copyBtn" class="secondary" type="button">Copy</button>
+          <button id="downloadBtn" class="secondary" type="button">Download .json</button>
+        </div>
+      </div>
+      <pre id="output" aria-label="Generated JSON"><code>{
+  "message": "Paste a VLESS URL and click Generate JSON."
+}</code></pre>
+    </section>
+
+    <footer>
+      <span>Runs entirely in your browser.</span>
+      <span>Useful for static GitHub Pages hosting.</span>
+    </footer>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
