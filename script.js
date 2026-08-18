@@ -220,7 +220,7 @@ function getListDrivenOverrides() {
 
 
 function buildOutbound(parsed, override, index) {
-  const proxyPort = numberValueOf(els.proxyPort, 41105) + index;
+  const proxyPort = numberValueOf(els.proxyPort, 41105);
 
   return {
     mux: {
