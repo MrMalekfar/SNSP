@@ -36,3 +36,7 @@ So if `list.json` contains 9 entries, the generated config contains 9 proxy outb
 Keep `index.html`, `style.css`, `script.js`, and `list.json` in the same directory of the repository. The browser fetches `./list.json` from the GitHub Pages origin with cache disabled for the request.
 
 Everything runs locally in the browser; the VLESS URL is not uploaded to a backend.
+
+## Important
+
+The Generate action reloads `list.json` every time. The number of proxy outbounds is exactly the number of valid records in `list.json`; there is no HTML outbound-count input and no fallback to three outbounds.

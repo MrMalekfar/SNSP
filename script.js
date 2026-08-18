@@ -395,14 +395,18 @@ function buildConfig(parsed, listEntries) {
   };
 }
 
-function generate() {
+async function generate() {
   try {
+    // Always reload the repository list before generating so stale in-memory data cannot be used.
+    await loadSniList();
+    renderOutboundRows();
     const parsed = parseVless(valueOf(els.input));
     const entries = getListDrivenOverrides();
     const config = buildConfig(parsed, entries);
     lastConfig = config;
     setDetectedFields(parsed);
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
+    console.info("Generated list-driven proxy outbounds:", entries);
     setStatus(`Generated ${entries.length} proxy outbounds directly from list.json: ${entries.map((x) => `${x.tag} (${x.fakeSni} → ${x.spoofIp})`).join(", ")}.`, "success");
   } catch (error) {
     lastConfig = null;
@@ -442,7 +446,7 @@ function downloadJson() {
   setStatus("JSON file downloaded.", "success");
 }
 
-if (els.generate) els.generate.addEventListener("click", generate);
+if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
 if (els.copy) els.copy.addEventListener("click", copyJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
 if (els.sample) els.sample.addEventListener("click", async () => {
@@ -450,13 +454,13 @@ if (els.sample) els.sample.addEventListener("click", async () => {
   try {
     await loadSniList();
     renderOutboundRows();
-    generate();
+    await generate();
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Unable to load list.json.", "error");
   }
 });
 if (els.input) els.input.addEventListener("keydown", (event) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") generate();
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") void generate();
 });
 
 (async () => {
