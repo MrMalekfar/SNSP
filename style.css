@@ -278,6 +278,9 @@ button:active {
 .output-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "generated advanced"
+    "v2box v2box";
   gap: 18px;
   margin-top: 18px;
 }
@@ -286,13 +289,25 @@ button:active {
   margin-top: 0;
 }
 
-.output-grid pre {
-  min-height: 620px;
+.output-grid .output-card:nth-child(1) {
+  grid-area: generated;
+}
+
+.output-grid .advanced-output-card {
+  grid-area: advanced;
+}
+
+.output-grid .v2box-output-card {
+  grid-area: v2box;
 }
 
 @media (max-width: 1100px) {
   .output-grid {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "generated"
+      "advanced"
+      "v2box";
   }
 }
 
