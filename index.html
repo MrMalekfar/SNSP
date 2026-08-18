@@ -49,8 +49,8 @@
             <input id="proxyPort" type="number" min="1" max="65535" value="41105" />
           </label>
           <label>
-            Number of proxy outbounds
-            <input id="outboundCount" type="number" min="1" max="50" value="3" />
+            Outbound source
+            <input value="list.json (GitHub repository)" readonly />
           </label>
           <label>
             Log level
@@ -65,10 +65,9 @@
 
         <div class="section-head subhead">
           <div>
-            <h2>Per-outbound spoof settings</h2>
-            <p>Each generated outbound gets a unique tag such as <code>AutoOut_1</code>. Local proxy ports increment from the starting port.</p>
+            <h2>Outbounds from list.json</h2>
+            <p>Every entry in <code>list.json</code> becomes one outbound. The page does not use manually entered SNI/IP values.</p>
           </div>
-          <button id="applyCountBtn" class="secondary" type="button">Apply count</button>
         </div>
         <div id="outboundRows" class="outbound-rows"></div>
 

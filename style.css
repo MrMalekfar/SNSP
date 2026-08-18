@@ -365,3 +365,15 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.list-driven-row .field-label {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.72;
+  margin-bottom: 0.35rem;
+}
+
+.list-driven-row code {
+  display: inline-block;
+  overflow-wrap: anywhere;
+}

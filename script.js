@@ -16,9 +16,7 @@ const els = {
   fields: $("fields"),
   proxyAddress: $("proxyAddress"),
   proxyPort: $("proxyPort"),
-  outboundCount: $("outboundCount"),
   logLevel: $("logLevel"),
-  applyCount: $("applyCountBtn"),
   outboundRows: $("outboundRows"),
   observatorySelector: $("observatorySelector"),
   observatoryDestination: $("observatoryDestination"),
@@ -43,15 +41,30 @@ let lastConfig = null;
 let sniList = [];
 
 async function loadSniList() {
-  try {
-    const res = await fetch("./list.json");
-    if (!res.ok) throw new Error();
-    sniList = await res.json();
-  } catch (e) {
-    console.error("Failed to load list.json", e);
-    sniList = [];
+  const url = `./list.json?v=${Date.now()}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Unable to load list.json (HTTP ${res.status}).`);
+
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error("list.json must contain a JSON array of { ip, sni } objects.");
   }
+
+  const cleaned = data.map((item, index) => ({
+    ip: String(item?.ip ?? "").trim(),
+    sni: String(item?.sni ?? "").trim()
+  }));
+
+  const invalid = cleaned.findIndex((item) => !item.ip || !item.sni);
+  if (invalid >= 0) {
+    throw new Error(`list.json item ${invalid + 1} must contain both "ip" and "sni".`);
+  }
+
+  if (!cleaned.length) throw new Error("list.json is empty; no proxy outbounds can be generated.");
+  sniList = cleaned;
+  return sniList;
 }
+
 
 const staticDnsHosts = {
   "domain:googleapis.cn": "googleapis.com",
@@ -177,51 +190,34 @@ function setDetectedFields(parsed) {
   ).join("");
 }
 
-function renderOutboundRows(count) {
-  const safeCount = Math.min(50, Math.max(1, Number(count) || 1));
-  if (els.outboundCount) els.outboundCount.value = safeCount;
+function renderOutboundRows() {
   if (!els.outboundRows) return;
   els.outboundRows.innerHTML = "";
 
-  for (let i = 1; i <= safeCount; i += 1) {
+  sniList.forEach((item, index) => {
     const row = document.createElement("div");
-    row.className = "outbound-row";
-    const item = sniList[(i - 1) % (sniList.length || 1)] || { sni: "hcaptcha.com", ip: "104.19.229.21" };
+    row.className = "outbound-row list-driven-row";
     row.innerHTML = `
-      <div class="tag-cell">AutoOut_${i}</div>
-      <label>Fake SNI<input data-field="fakeSni" value="${item.sni}" /></label>
-      <label>Spoof IP<input data-field="spoofIp" value="${item.ip}" /></label>
-      <label>Target port<input data-field="targetPort" type="number" min="1" max="65535" value="443" /></label>
+      <div class="tag-cell">AutoOut_${index + 1}</div>
+      <div><span class="field-label">Fake SNI</span><code>${escapeHtml(item.sni)}</code></div>
+      <div><span class="field-label">Spoof IP</span><code>${escapeHtml(item.ip)}</code></div>
+      <div><span class="field-label">Target port</span><code>443</code></div>
     `;
     els.outboundRows.appendChild(row);
-  }
-}
-
-function readOutboundRows() {
-  if (!els.outboundRows) return [];
-  const rows = [...els.outboundRows.querySelectorAll(".outbound-row")];
-  return rows.map((row, index) => {
-    const fakeSniEl = row.querySelector('[data-field="fakeSni"]');
-    const fakeSni = valueOf(fakeSniEl).trim();
-    const spoofIpEl = row.querySelector('[data-field="spoofIp"]');
-    const spoofIp = valueOf(spoofIpEl).trim();
-    const targetPortEl = row.querySelector('[data-field="targetPort"]');
-    const targetPort = numberValueOf(targetPortEl, NaN);
-
-    if (!fakeSni) throw new Error(`AutoOut_${index + 1}: Fake SNI cannot be empty.`);
-    if (!spoofIp) throw new Error(`AutoOut_${index + 1}: Spoof IP cannot be empty.`);
-    if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
-      throw new Error(`AutoOut_${index + 1}: target port must be between 1 and 65535.`);
-    }
-
-    return {
-      tag: `AutoOut_${index + 1}`,
-      fakeSni,
-      spoofIp,
-      targetPort
-    };
   });
+
 }
+
+function getListDrivenOverrides() {
+  if (!sniList.length) throw new Error("list.json is empty; load it before generating JSON.");
+  return sniList.map((item, index) => ({
+    tag: `AutoOut_${index + 1}`,
+    fakeSni: item.sni,
+    spoofIp: item.ip,
+    targetPort: 443
+  }));
+}
+
 
 function buildOutbound(parsed, override, index) {
   const proxyPort = numberValueOf(els.proxyPort, 41105) + index;
@@ -275,10 +271,10 @@ function buildOutbound(parsed, override, index) {
   };
 }
 
-function buildConfig(parsed, overrides) {
+function buildConfig(parsed, listEntries) {
   const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
   const proxyStartPort = numberValueOf(els.proxyPort, 41105);
-  const targetCount = overrides.length;
+  const targetCount = listEntries.length;
   const selector = valueOf(els.observatorySelector, "AutoOut_").trim();
   const sampling = numberValueOf(els.observatorySampling, 3);
 
@@ -339,7 +335,7 @@ function buildConfig(parsed, overrides) {
       }
     },
     outbounds: [
-      ...overrides.map((override, index) => buildOutbound(parsed, override, index)),
+      ...listEntries.map((entry, index) => buildOutbound(parsed, entry, index)),
       {
         protocol: "freedom",
         settings: {
@@ -402,12 +398,12 @@ function buildConfig(parsed, overrides) {
 function generate() {
   try {
     const parsed = parseVless(valueOf(els.input));
-    const overrides = readOutboundRows();
-    const config = buildConfig(parsed, overrides);
+    const entries = getListDrivenOverrides();
+    const config = buildConfig(parsed, entries);
     lastConfig = config;
     setDetectedFields(parsed);
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
-    setStatus(`Generated ${overrides.length} proxy outbounds: ${overrides.map((x) => x.tag).join(", ")}.`, "success");
+    setStatus(`Generated ${entries.length} proxy outbounds directly from list.json: ${entries.map((x) => `${x.tag} (${x.fakeSni} → ${x.spoofIp})`).join(", ")}.`, "success");
   } catch (error) {
     lastConfig = null;
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
@@ -447,20 +443,28 @@ function downloadJson() {
 }
 
 if (els.generate) els.generate.addEventListener("click", generate);
-if (els.applyCount) els.applyCount.addEventListener("click", () => renderOutboundRows(valueOf(els.outboundCount, "3")));
 if (els.copy) els.copy.addEventListener("click", copyJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
-if (els.sample) els.sample.addEventListener("click", () => {
+if (els.sample) els.sample.addEventListener("click", async () => {
   if (els.input) els.input.value = sampleVless;
-  (async () => {
-  await loadSniList();
-  renderOutboundRows(valueOf(els.outboundCount, "3"));
-})();
-  generate();
+  try {
+    await loadSniList();
+    renderOutboundRows();
+    generate();
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Unable to load list.json.", "error");
+  }
 });
-if (els.outboundCount) els.outboundCount.addEventListener("change", () => renderOutboundRows(valueOf(els.outboundCount, "3")));
 if (els.input) els.input.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") generate();
 });
 
-renderOutboundRows(valueOf(els.outboundCount, "3"));
+(async () => {
+  try {
+    await loadSniList();
+    renderOutboundRows();
+    setStatus(`Loaded ${sniList.length} SNI/IP pairs from list.json.`, "success");
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Unable to load list.json.", "error");
+  }
+})();
