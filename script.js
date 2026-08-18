@@ -1,3 +1,16 @@
+let sniList = [];
+
+async function loadSniList() {
+  try {
+    const res = await fetch("./list.json");
+    if (!res.ok) throw new Error("list.json not found");
+
+    sniList = await res.json();
+  } catch (err) {
+    console.error("Failed to load list.json:", err);
+    sniList = [];
+  }
+}
 const sampleVless =
   "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
 
