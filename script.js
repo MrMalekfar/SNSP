@@ -48,7 +48,7 @@ let lastV2boxConfigs = [];
 
 const ADVANCED_FINGERPRINT = "unsafe";
 const ADVANCED_CIPHER_SUITES =
-  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA384:" +
+  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:" +
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:" +
   "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
   "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:" +
@@ -699,12 +699,24 @@ function buildAdvancedConfig(parsed, listEntries) {
     throw new Error("The advanced fingerprint + fragment + cipherSuites config requires security=tls.");
   }
 
-  // Start from the normal generated config so DNS, routing, list-driven outbounds,
-  // Observatory, policy, and all existing application behavior remain identical.
+  // IMPORTANT: The advanced box is intentionally a superset of the user's
+  // reference configuration. It starts from the full generated config so
+  // burstObservatory, sniSpoof, DNS, routing, policy, and every other field
+  // are retained, then applies only the advanced TLS/FinalMask additions.
   const config = JSON.parse(JSON.stringify(buildConfig(parsed, listEntries)));
+
+  // Keep these reference-config features explicitly present in the Advanced box.
+  // This also protects them if buildConfig is refactored later.
+  config.burstObservatory = JSON.parse(JSON.stringify(config.burstObservatory));
 
   for (const outbound of config.outbounds ?? []) {
     if (outbound.protocol !== "vless") continue;
+
+    // Reference-config feature: SNI/IP spoofing lives on the VLESS outbound,
+    // outside streamSettings.
+    if (!outbound.sniSpoof) {
+      throw new Error("Advanced config: sniSpoof is missing from a VLESS outbound.");
+    }
 
     const stream = outbound.streamSettings ?? (outbound.streamSettings = {});
     stream.security = "tls";
@@ -717,7 +729,12 @@ function buildAdvancedConfig(parsed, listEntries) {
     tlsSettings.cipherSuites = ADVANCED_CIPHER_SUITES;
     tlsSettings.show = false;
 
+    // Exact FinalMask pattern from the supplied reference config.
     stream.finalmask = JSON.parse(JSON.stringify(ADVANCED_FINALMASK));
+  }
+
+  if (!config.burstObservatory) {
+    throw new Error("Advanced config: burstObservatory is missing from the generated config.");
   }
 
   return config;
