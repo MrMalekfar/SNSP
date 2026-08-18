@@ -1,3 +1,6 @@
+const MAX_V2BOX_CONFIGS = 10;
+let sourceListCount = 0;
+
 const sampleVless =
   "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
 
@@ -12,7 +15,7 @@ const els = {
   copy: $("copyBtn"),
   download: $("downloadBtn"),
   output: $("output"),
-  v2boxOutput: $("v2boxOutput"),
+  v2boxConfigs: $("v2boxConfigs"),
   status: $("status"),
   fields: $("fields"),
   proxyAddress: $("proxyAddress"),
@@ -38,7 +41,7 @@ function numberValueOf(el, fallback = 0) {
 }
 
 let lastConfig = null;
-let lastV2boxConfigs = null;
+let lastV2boxConfigs = [];
 
 let sniList = [];
 
@@ -63,7 +66,8 @@ async function loadSniList() {
   }
 
   if (!cleaned.length) throw new Error("list.json is empty; no proxy outbounds can be generated.");
-  sniList = cleaned;
+  sourceListCount = cleaned.length;
+  sniList = cleaned.slice(0, MAX_V2BOX_CONFIGS);
   return sniList;
 }
 
@@ -383,7 +387,54 @@ function buildSingleV2boxConfig(parsed, entry, index) {
 }
 
 function buildV2boxConfigs(parsed) {
-  return sniList.map((entry, index) => buildSingleV2boxConfig(parsed, entry, index));
+  return sniList.map((entry, index) => ({
+    entry,
+    config: buildSingleV2boxConfig(parsed, entry, index)
+  }));
+}
+
+function renderV2boxConfigs() {
+  if (!els.v2boxConfigs) return;
+
+  if (!lastV2boxConfigs.length) {
+    els.v2boxConfigs.innerHTML = `
+      <div class="v2box-empty">
+        <p>Generate JSON to build the individual V2Box configs.</p>
+      </div>
+    `;
+    return;
+  }
+
+  els.v2boxConfigs.innerHTML = lastV2boxConfigs.map((item, index) => `
+    <article class="v2box-config-card">
+      <div class="v2box-config-head">
+        <div>
+          <div class="v2box-config-title">V2Box Config ${index + 1}</div>
+          <div class="v2box-config-meta">
+            <span>SNI: <code>${escapeHtml(item.entry.sni)}</code></span>
+            <span>IP: <code>${escapeHtml(item.entry.ip)}</code></span>
+          </div>
+        </div>
+        <button class="secondary v2box-copy-btn" type="button" data-index="${index}">Copy JSON</button>
+      </div>
+      <pre class="v2box-config-json"><code>${escapeHtml(JSON.stringify(item.config, null, 2))}</code></pre>
+    </article>
+  `).join("");
+}
+
+async function copyV2boxConfig(index) {
+  const item = lastV2boxConfigs[index];
+  if (!item) {
+    setStatus("V2Box config is not available.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(item.config, null, 2));
+    setStatus(`Copied V2Box Config ${index + 1} to clipboard.`, "success");
+  } catch {
+    setStatus("Clipboard access was blocked by the browser.", "error");
+  }
 }
 
 function buildConfig(parsed, listEntries) {
@@ -619,15 +670,14 @@ async function generate() {
     lastV2boxConfigs = buildV2boxConfigs(parsed);
     setDetectedFields(parsed);
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
-    renderV2boxConfigs(lastV2boxConfigs);
+    renderV2boxConfigs();
     console.info("Generated list-driven proxy outbounds:", entries);
-    setStatus(`Generated ${entries.length} proxy outbounds directly from list.json: ${entries.map((x) => `${x.tag} (${x.fakeSni} → ${x.spoofIp})`).join(", ")}.`, "success");
+    const capped = sourceListCount > MAX_V2BOX_CONFIGS ? ` (showing first ${MAX_V2BOX_CONFIGS} of ${sourceListCount})` : "";
+    setStatus(`Generated ${entries.length} proxy outbounds and ${lastV2boxConfigs.length} independent V2Box configs from list.json${capped}.`, "success");
   } catch (error) {
     lastConfig = null;
-    lastV2boxConfigs = null;
-    if (els.v2boxOutput) {
-      els.v2boxOutput.innerHTML = `<div class="v2box-empty">Generate JSON to build the V2Box configs.</div>`;
-    }
+    lastV2boxConfigs = [];
+    renderV2boxConfigs();
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
   }
 }
@@ -640,44 +690,6 @@ async function copyJson() {
   try {
     await navigator.clipboard.writeText(JSON.stringify(lastConfig, null, 2));
     setStatus("Copied JSON to clipboard.", "success");
-  } catch {
-    setStatus("Clipboard access was blocked by the browser.", "error");
-  }
-}
-
-function renderV2boxConfigs(configs) {
-  if (!els.v2boxOutput) return;
-  if (!Array.isArray(configs) || configs.length === 0) {
-    els.v2boxOutput.innerHTML = `<div class="v2box-empty">No V2Box configs were generated.</div>`;
-    return;
-  }
-
-  els.v2boxOutput.innerHTML = configs.map((config, index) => {
-    const label = config?.outbounds?.find((item) => item?.tag === "proxy")?.sniSpoof?.fakeSni || `Config ${index + 1}`;
-    const body = JSON.stringify(config, null, 2);
-    return `
-      <article class="v2box-config-item">
-        <div class="v2box-config-head">
-          <div>
-            <h3>V2Box Config ${index + 1}</h3>
-            <span>${escapeHtml(label)}</span>
-          </div>
-          <button class="secondary v2box-copy-btn" type="button" data-v2box-index="${index}">Copy</button>
-        </div>
-        <pre><code>${escapeHtml(body)}</code></pre>
-      </article>
-    `;
-  }).join("");
-}
-
-async function copyV2boxConfig(index) {
-  if (!Array.isArray(lastV2boxConfigs) || !lastV2boxConfigs[index]) {
-    setStatus("Generate JSON first.", "error");
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(JSON.stringify(lastV2boxConfigs[index], null, 2));
-    setStatus(`V2Box Config ${index + 1} copied to clipboard.`, "success");
   } catch {
     setStatus("Clipboard access was blocked by the browser.", "error");
   }
@@ -705,11 +717,12 @@ function downloadJson() {
 if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
 if (els.copy) els.copy.addEventListener("click", copyJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
-if (els.v2boxOutput) {
-  els.v2boxOutput.addEventListener("click", (event) => {
+if (els.v2boxConfigs) {
+  els.v2boxConfigs.addEventListener("click", (event) => {
     const button = event.target.closest(".v2box-copy-btn");
     if (!button) return;
-    copyV2boxConfig(Number(button.dataset.v2boxIndex));
+    const index = Number(button.dataset.index);
+    if (Number.isInteger(index)) void copyV2boxConfig(index);
   });
 }
 if (els.sample) els.sample.addEventListener("click", async () => {
@@ -730,7 +743,9 @@ if (els.input) els.input.addEventListener("keydown", (event) => {
   try {
     await loadSniList();
     renderOutboundRows();
-    setStatus(`Loaded ${sniList.length} SNI/IP pairs from list.json.`, "success");
+    renderV2boxConfigs();
+    const limitNote = sourceListCount > MAX_V2BOX_CONFIGS ? ` Using first ${MAX_V2BOX_CONFIGS} of ${sourceListCount}.` : "";
+    setStatus(`Loaded ${sniList.length} SNI/IP pairs from list.json.${limitNote}`, "success");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Unable to load list.json.", "error");
   }

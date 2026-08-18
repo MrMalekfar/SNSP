@@ -295,62 +295,6 @@ button:active {
   }
 }
 
-
-.v2box-config-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 16px;
-  max-height: 620px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.v2box-config-item {
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  background: #020617;
-  overflow: hidden;
-}
-
-.v2box-config-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #1e293b;
-  background: rgba(15, 23, 42, 0.9);
-}
-
-.v2box-config-head h3 {
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.v2box-config-head span {
-  display: block;
-  margin-top: 3px;
-  color: #94a3b8;
-  font-size: 0.8rem;
-  overflow-wrap: anywhere;
-}
-
-.v2box-config-item pre {
-  max-height: 420px;
-  min-height: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-}
-
-.v2box-empty {
-  padding: 28px;
-  border: 1px dashed #334155;
-  border-radius: 14px;
-  color: #94a3b8;
-  text-align: center;
-}
-
 footer {
   display: flex;
   justify-content: space-between;
@@ -362,63 +306,7 @@ footer {
 
 @media (max-width: 820px) {
   .hero,
-  
-.v2box-config-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 16px;
-  max-height: 620px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.v2box-config-item {
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  background: #020617;
-  overflow: hidden;
-}
-
-.v2box-config-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #1e293b;
-  background: rgba(15, 23, 42, 0.9);
-}
-
-.v2box-config-head h3 {
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.v2box-config-head span {
-  display: block;
-  margin-top: 3px;
-  color: #94a3b8;
-  font-size: 0.8rem;
-  overflow-wrap: anywhere;
-}
-
-.v2box-config-item pre {
-  max-height: 420px;
-  min-height: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-}
-
-.v2box-empty {
-  padding: 28px;
-  border: 1px dashed #334155;
-  border-radius: 14px;
-  color: #94a3b8;
-  text-align: center;
-}
-
-footer {
+  footer {
     display: block;
   }
 
@@ -509,4 +397,75 @@ footer {
 .list-driven-row code {
   display: inline-block;
   overflow-wrap: anywhere;
+}
+
+.v2box-configs {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.v2box-config-card {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.56);
+}
+
+.v2box-config-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.v2box-config-title {
+  color: #e2e8f0;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.v2box-config-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.v2box-config-meta code {
+  color: #bfdbfe;
+  overflow-wrap: anywhere;
+}
+
+.v2box-config-json {
+  max-height: 520px;
+  margin: 0;
+  overflow: auto;
+  padding: 16px;
+  background: #020617;
+  color: #dbeafe;
+  font-size: 0.78rem;
+}
+
+.v2box-empty {
+  padding: 22px;
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .v2box-config-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .v2box-config-head .secondary {
+    width: 100%;
+  }
 }

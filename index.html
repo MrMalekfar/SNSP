@@ -154,12 +154,10 @@
         <div class="section-head">
           <div>
             <h2>V2Box Single Configs</h2>
-            <p>Each IP/SNI pair is shown as an independent V2Box JSON config with its own copy button.</p>
+            <p>One independent JSON config per SNI/IP pair. Maximum 10 configs.</p>
           </div>
         </div>
-        <div id="v2boxOutput" class="v2box-config-list" aria-label="V2Box single configs">
-          <div class="v2box-empty">Generate JSON to build the V2Box configs.</div>
-        </div>
+        <div id="v2boxConfigs" class="v2box-configs" aria-live="polite"></div>
       </div>
     </section>
 
