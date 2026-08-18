@@ -48,7 +48,7 @@ let lastV2boxConfigs = [];
 
 const ADVANCED_FINGERPRINT = "unsafe";
 const ADVANCED_CIPHER_SUITES =
-  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA384:" +
+  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:" +
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:" +
   "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
   "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:" +
@@ -698,16 +698,13 @@ function buildAdvancedConfig(parsed, listEntries) {
   if (parsed.security !== "tls") {
     throw new Error("The advanced fingerprint + fragment + cipherSuites config requires security=tls.");
   }
-  if (!Array.isArray(listEntries) || !listEntries.length) {
-    throw new Error("The advanced config requires at least one list entry.");
-  }
-
   // This config deliberately follows the supplied FinalMask example instead of
   // cloning the normal generator. It has exactly one VLESS outbound, with no
   // burstObservatory and no sniSpoof blocks.
-  const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
-  const proxyPort = numberValueOf(els.proxyPort, 41105);
-  const firstEntry = listEntries[0];
+  // Advanced config must connect directly to the VLESS endpoint from the input URL.
+  // Do not use the local proxy host/port fields here.
+  const targetAddress = parsed.address;
+  const targetPort = parsed.port;
 
   return {
     dns: {
@@ -754,8 +751,8 @@ function buildAdvancedConfig(parsed, listEntries) {
         settings: {
           vnext: [
             {
-              address: proxyAddress,
-              port: proxyPort,
+              address: targetAddress,
+              port: targetPort,
               users: [
                 {
                   encryption: parsed.encryption || "none",
@@ -774,14 +771,14 @@ function buildAdvancedConfig(parsed, listEntries) {
             allowInsecure: false,
             alpn: ["http/1.1"],
             fingerprint: ADVANCED_FINGERPRINT,
-            serverName: parsed.sni || firstEntry.fakeSni,
+            serverName: parsed.sni,
             cipherSuites: ADVANCED_CIPHER_SUITES,
             show: false
           },
           ...(parsed.transport === "ws" ? {
             wsSettings: {
               headers: {
-                Host: parsed.wsHost || parsed.sni || firstEntry.fakeSni
+                Host: parsed.wsHost || parsed.sni
               },
               path: parsed.wsPath
             }
