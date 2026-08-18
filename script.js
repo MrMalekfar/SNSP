@@ -1,30 +1,42 @@
 const sampleVless =
   "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
 
+function $(id) {
+  return document.getElementById(id);
+}
+
 const els = {
-  input: document.getElementById("vlessInput"),
-  generate: document.getElementById("generateBtn"),
-  sample: document.getElementById("sampleBtn"),
-  copy: document.getElementById("copyBtn"),
-  download: document.getElementById("downloadBtn"),
-  output: document.getElementById("output"),
-  status: document.getElementById("status"),
-  fields: document.getElementById("fields"),
-  proxyAddress: document.getElementById("proxyAddress"),
-  proxyPort: document.getElementById("proxyPort"),
-  outboundCount: document.getElementById("outboundCount"),
-  targetPort: document.getElementById("targetPort"),
-  logLevel: document.getElementById("logLevel"),
-  applyCount: document.getElementById("applyCountBtn"),
-  outboundRows: document.getElementById("outboundRows"),
-  observatorySelector: document.getElementById("observatorySelector"),
-  observatoryDestination: document.getElementById("observatoryDestination"),
-  observatoryConnectivity: document.getElementById("observatoryConnectivity"),
-  observatoryInterval: document.getElementById("observatoryInterval"),
-  observatorySampling: document.getElementById("observatorySampling"),
-  observatoryTimeout: document.getElementById("observatoryTimeout"),
-  observatoryHttpMethod: document.getElementById("observatoryHttpMethod")
+  input: $("vlessInput"),
+  generate: $("generateBtn"),
+  sample: $("sampleBtn"),
+  copy: $("copyBtn"),
+  download: $("downloadBtn"),
+  output: $("output"),
+  status: $("status"),
+  fields: $("fields"),
+  proxyAddress: $("proxyAddress"),
+  proxyPort: $("proxyPort"),
+  outboundCount: $("outboundCount"),
+  logLevel: $("logLevel"),
+  applyCount: $("applyCountBtn"),
+  outboundRows: $("outboundRows"),
+  observatorySelector: $("observatorySelector"),
+  observatoryDestination: $("observatoryDestination"),
+  observatoryConnectivity: $("observatoryConnectivity"),
+  observatoryInterval: $("observatoryInterval"),
+  observatorySampling: $("observatorySampling"),
+  observatoryTimeout: $("observatoryTimeout"),
+  observatoryHttpMethod: $("observatoryHttpMethod")
 };
+
+function valueOf(el, fallback = "") {
+  return el && typeof el.value === "string" ? el.value : fallback;
+}
+
+function numberValueOf(el, fallback = 0) {
+  const value = Number(valueOf(el, fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
 
 let lastConfig = null;
 
@@ -41,6 +53,7 @@ const staticDnsHosts = {
 };
 
 function setStatus(message, kind = "") {
+  if (!els.status) return;
   els.status.textContent = message;
   els.status.className = `status ${kind}`.trim();
 }
@@ -145,6 +158,7 @@ function setDetectedFields(parsed) {
     ["Remark", parsed.remark || "—"]
   ];
 
+  if (!els.fields) return;
   els.fields.innerHTML = mapping.map(([name, value]) =>
     `<div><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd></div>`
   ).join("");
@@ -152,7 +166,8 @@ function setDetectedFields(parsed) {
 
 function renderOutboundRows(count) {
   const safeCount = Math.min(50, Math.max(1, Number(count) || 1));
-  els.outboundCount.value = safeCount;
+  if (els.outboundCount) els.outboundCount.value = safeCount;
+  if (!els.outboundRows) return;
   els.outboundRows.innerHTML = "";
 
   for (let i = 1; i <= safeCount; i += 1) {
@@ -169,11 +184,15 @@ function renderOutboundRows(count) {
 }
 
 function readOutboundRows() {
+  if (!els.outboundRows) return [];
   const rows = [...els.outboundRows.querySelectorAll(".outbound-row")];
   return rows.map((row, index) => {
-    const fakeSni = row.querySelector('[data-field="fakeSni"]').value.trim();
-    const spoofIp = row.querySelector('[data-field="spoofIp"]').value.trim();
-    const targetPort = Number(row.querySelector('[data-field="targetPort"]').value);
+    const fakeSniEl = row.querySelector('[data-field="fakeSni"]');
+    const fakeSni = valueOf(fakeSniEl).trim();
+    const spoofIpEl = row.querySelector('[data-field="spoofIp"]');
+    const spoofIp = valueOf(spoofIpEl).trim();
+    const targetPortEl = row.querySelector('[data-field="targetPort"]');
+    const targetPort = numberValueOf(targetPortEl, NaN);
 
     if (!fakeSni) throw new Error(`AutoOut_${index + 1}: Fake SNI cannot be empty.`);
     if (!spoofIp) throw new Error(`AutoOut_${index + 1}: Spoof IP cannot be empty.`);
@@ -191,7 +210,7 @@ function readOutboundRows() {
 }
 
 function buildOutbound(parsed, override, index) {
-  const proxyPort = Number(els.proxyPort.value) + index;
+  const proxyPort = numberValueOf(els.proxyPort, 41105) + index;
 
   return {
     mux: {
@@ -202,7 +221,7 @@ function buildOutbound(parsed, override, index) {
     settings: {
       vnext: [
         {
-          address: els.proxyAddress.value.trim(),
+          address: valueOf(els.proxyAddress, "127.0.0.1").trim(),
           port: proxyPort,
           users: [
             {
@@ -243,11 +262,11 @@ function buildOutbound(parsed, override, index) {
 }
 
 function buildConfig(parsed, overrides) {
-  const proxyAddress = els.proxyAddress.value.trim();
-  const proxyStartPort = Number(els.proxyPort.value);
+  const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
+  const proxyStartPort = numberValueOf(els.proxyPort, 41105);
   const targetCount = overrides.length;
-  const selector = els.observatorySelector.value.trim();
-  const sampling = Number(els.observatorySampling.value);
+  const selector = valueOf(els.observatorySelector, "AutoOut_").trim();
+  const sampling = numberValueOf(els.observatorySampling, 3);
 
   if (!proxyAddress) throw new Error("Local proxy address cannot be empty.");
   if (!Number.isInteger(proxyStartPort) || proxyStartPort < 1 || proxyStartPort + targetCount - 1 > 65535) {
@@ -255,9 +274,9 @@ function buildConfig(parsed, overrides) {
   }
   if (!selector) throw new Error("Burst Observatory subject selector cannot be empty.");
   if (!Number.isInteger(sampling) || sampling < 1) throw new Error("Sampling must be at least 1.");
-  if (!els.observatoryDestination.value.trim()) throw new Error("Burst Observatory destination cannot be empty.");
-  if (!els.observatoryInterval.value.trim()) throw new Error("Burst Observatory interval cannot be empty.");
-  if (!els.observatoryTimeout.value.trim()) throw new Error("Burst Observatory timeout cannot be empty.");
+  if (!valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim()) throw new Error("Burst Observatory destination cannot be empty.");
+  if (!valueOf(els.observatoryInterval, "20m").trim()) throw new Error("Burst Observatory interval cannot be empty.");
+  if (!valueOf(els.observatoryTimeout, "3s").trim()) throw new Error("Burst Observatory timeout cannot be empty.");
 
   return {
     dns: {
@@ -292,17 +311,17 @@ function buildConfig(parsed, overrides) {
       }
     ],
     log: {
-      loglevel: els.logLevel.value
+      loglevel: valueOf(els.logLevel, "warning")
     },
     burstObservatory: {
       subjectSelector: [selector],
       pingConfig: {
-        destination: els.observatoryDestination.value.trim(),
-        connectivity: els.observatoryConnectivity.value.trim(),
-        interval: els.observatoryInterval.value.trim(),
+        destination: valueOf(els.observatoryDestination, "http://edge.microsoft.com/captiveportal/generate_204").trim(),
+        connectivity: valueOf(els.observatoryConnectivity).trim(),
+        interval: valueOf(els.observatoryInterval, "20m").trim(),
         sampling,
-        timeout: els.observatoryTimeout.value.trim(),
-        httpMethod: els.observatoryHttpMethod.value
+        timeout: valueOf(els.observatoryTimeout, "3s").trim(),
+        httpMethod: valueOf(els.observatoryHttpMethod, "HEAD")
       }
     },
     outbounds: [
@@ -368,12 +387,12 @@ function buildConfig(parsed, overrides) {
 
 function generate() {
   try {
-    const parsed = parseVless(els.input.value);
+    const parsed = parseVless(valueOf(els.input));
     const overrides = readOutboundRows();
     const config = buildConfig(parsed, overrides);
     lastConfig = config;
     setDetectedFields(parsed);
-    els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
+    if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
     setStatus(`Generated ${overrides.length} proxy outbounds: ${overrides.map((x) => x.tag).join(", ")}.`, "success");
   } catch (error) {
     lastConfig = null;
@@ -413,18 +432,18 @@ function downloadJson() {
   setStatus("JSON file downloaded.", "success");
 }
 
-els.generate.addEventListener("click", generate);
-els.applyCount.addEventListener("click", () => renderOutboundRows(els.outboundCount.value));
-els.copy.addEventListener("click", copyJson);
-els.download.addEventListener("click", downloadJson);
-els.sample.addEventListener("click", () => {
-  els.input.value = sampleVless;
-  renderOutboundRows(els.outboundCount.value);
+if (els.generate) els.generate.addEventListener("click", generate);
+if (els.applyCount) els.applyCount.addEventListener("click", () => renderOutboundRows(valueOf(els.outboundCount, "3")));
+if (els.copy) els.copy.addEventListener("click", copyJson);
+if (els.download) els.download.addEventListener("click", downloadJson);
+if (els.sample) els.sample.addEventListener("click", () => {
+  if (els.input) els.input.value = sampleVless;
+  renderOutboundRows(valueOf(els.outboundCount, "3"));
   generate();
 });
-els.outboundCount.addEventListener("change", () => renderOutboundRows(els.outboundCount.value));
-els.input.addEventListener("keydown", (event) => {
+if (els.outboundCount) els.outboundCount.addEventListener("change", () => renderOutboundRows(valueOf(els.outboundCount, "3")));
+if (els.input) els.input.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") generate();
 });
 
-renderOutboundRows(els.outboundCount.value);
+renderOutboundRows(valueOf(els.outboundCount, "3"));
