@@ -469,3 +469,23 @@ footer {
     width: 100%;
   }
 }
+
+
+.advanced-output-card {
+  margin-top: 18px;
+}
+
+.advanced-output-card pre {
+  max-height: 720px;
+}
+
+@media (max-width: 560px) {
+  .advanced-output-card .section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .advanced-output-card .actions {
+    width: 100%;
+  }
+}

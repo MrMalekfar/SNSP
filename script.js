@@ -16,7 +16,7 @@ const els = {
   download: $("downloadBtn"),
   output: $("output"),
   advancedOutput: $("advancedOutput"),
-  advancedCopy: $("advancedCopyBtn"),
+  advancedCopy: $("advancedCopy"),
   v2boxConfigs: $("v2boxConfigs"),
   status: $("status"),
   fields: $("fields"),
@@ -43,8 +43,40 @@ function numberValueOf(el, fallback = 0) {
 }
 
 let lastConfig = null;
-let lastV2boxConfigs = [];
 let lastAdvancedConfig = null;
+let lastV2boxConfigs = [];
+
+const ADVANCED_FINGERPRINT = "unsafe";
+const ADVANCED_CIPHER_SUITES =
+  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA384:" +
+  "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:" +
+  "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
+  "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:" +
+  "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:" +
+  "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
+
+const ADVANCED_FINALMASK = {
+  tcp: [
+    {
+      type: "fragment",
+      settings: {
+        packets: "tlshello",
+        lengths: ["5", "94", "1"],
+        delays: ["0"],
+        maxSplit: "0"
+      }
+    },
+    {
+      type: "fragment",
+      settings: {
+        packets: "1-1",
+        lengths: ["109", "1"],
+        delays: ["1"],
+        maxSplit: "355"
+      }
+    }
+  ]
+};
 
 let sniList = [];
 
@@ -228,50 +260,6 @@ function getListDrivenOverrides() {
 }
 
 
-const defaultCipherSuites =
-  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
-
-function buildAdvancedTlsBlock(parsed) {
-  return {
-    fingerprint: parsed.fingerprint || "unsafe",
-    fragment: {
-      type: "fragment",
-      settings: {
-        packets: "tlshello",
-        lengths: ["5", "94", "1"],
-        delays: ["0"],
-        maxSplit: "0"
-      }
-    },
-    cipherSuites: defaultCipherSuites
-  };
-}
-
-function buildFinalMask() {
-  return {
-    tcp: [
-      {
-        type: "fragment",
-        settings: {
-          packets: "tlshello",
-          lengths: ["5", "94", "1"],
-          delays: ["0"],
-          maxSplit: "0"
-        }
-      },
-      {
-        type: "fragment",
-        settings: {
-          packets: "1-1",
-          lengths: ["109", "1"],
-          delays: ["1"],
-          maxSplit: "355"
-        }
-      }
-    ]
-  };
-}
-
 function buildOutbound(parsed, override, index) {
   const proxyPort = numberValueOf(els.proxyPort, 41105);
 
@@ -309,8 +297,7 @@ function buildOutbound(parsed, override, index) {
       tlsSettings: {
         allowInsecure: parsed.allowInsecure,
         ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
-        fingerprint: parsed.fingerprint || "unsafe",
-        cipherSuites: defaultCipherSuites,
+        ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
         serverName: parsed.sni,
         show: false
       },
@@ -319,8 +306,7 @@ function buildOutbound(parsed, override, index) {
           headers: { Host: parsed.wsHost },
           path: parsed.wsPath
         }
-      } : {}),
-      finalmask: buildFinalMask()
+      } : {})
     },
     tag: override.tag
   };
@@ -440,32 +426,6 @@ function buildV2boxConfigs(parsed) {
     entry,
     config: buildSingleV2boxConfig(parsed, entry, index)
   }));
-}
-
-function renderAdvancedConfig() {
-  if (!els.advancedOutput) return;
-
-  if (!lastAdvancedConfig) {
-    els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify({
-      message: "Generate JSON to build this block."
-    }, null, 2))}</code>`;
-    return;
-  }
-
-  els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(lastAdvancedConfig, null, 2))}</code>`;
-}
-
-async function copyAdvancedConfig() {
-  if (!lastAdvancedConfig) {
-    setStatus("Generate JSON first.", "error");
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(JSON.stringify(lastAdvancedConfig, null, 2));
-    setStatus("Copied advanced TLS/fragment JSON to clipboard.", "success");
-  } catch {
-    setStatus("Clipboard access was blocked by the browser.", "error");
-  }
 }
 
 function renderV2boxConfigs() {
@@ -733,6 +693,60 @@ function buildConfig(parsed, listEntries) {
   };
 }
 
+
+function buildAdvancedConfig(parsed, listEntries) {
+  if (parsed.security !== "tls") {
+    throw new Error("The advanced fingerprint + fragment + cipherSuites config requires security=tls.");
+  }
+
+  // Start from the normal generated config so DNS, routing, list-driven outbounds,
+  // Observatory, policy, and all existing application behavior remain identical.
+  const config = JSON.parse(JSON.stringify(buildConfig(parsed, listEntries)));
+
+  for (const outbound of config.outbounds ?? []) {
+    if (outbound.protocol !== "vless") continue;
+
+    const stream = outbound.streamSettings ?? (outbound.streamSettings = {});
+    stream.security = "tls";
+
+    const tlsSettings = stream.tlsSettings ?? (stream.tlsSettings = {});
+    tlsSettings.allowInsecure = false;
+    tlsSettings.alpn = ["http/1.1"];
+    tlsSettings.fingerprint = ADVANCED_FINGERPRINT;
+    tlsSettings.serverName = parsed.sni;
+    tlsSettings.cipherSuites = ADVANCED_CIPHER_SUITES;
+    tlsSettings.show = false;
+
+    stream.finalmask = JSON.parse(JSON.stringify(ADVANCED_FINALMASK));
+  }
+
+  return config;
+}
+
+function renderAdvancedConfig() {
+  if (!els.advancedOutput) return;
+
+  const config = lastAdvancedConfig ?? {
+    message: "Paste a VLESS URL and click Generate JSON."
+  };
+
+  els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
+}
+
+async function copyAdvancedJson() {
+  if (!lastAdvancedConfig) {
+    setStatus("Generate JSON first.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(lastAdvancedConfig, null, 2));
+    setStatus("Copied advanced Xray JSON to clipboard.", "success");
+  } catch {
+    setStatus("Clipboard access was blocked by the browser.", "error");
+  }
+}
+
 async function generate() {
   try {
     // Always reload the repository list before generating so stale in-memory data cannot be used.
@@ -741,20 +755,22 @@ async function generate() {
     const parsed = parseVless(valueOf(els.input));
     const entries = getListDrivenOverrides();
     const config = buildConfig(parsed, entries);
+    const advancedConfig = buildAdvancedConfig(parsed, entries);
+
     lastConfig = config;
+    lastAdvancedConfig = advancedConfig;
     lastV2boxConfigs = buildV2boxConfigs(parsed);
-    lastAdvancedConfig = buildAdvancedTlsBlock(parsed);
     setDetectedFields(parsed);
     if (els.output) els.output.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
     renderAdvancedConfig();
     renderV2boxConfigs();
     console.info("Generated list-driven proxy outbounds:", entries);
     const capped = sourceListCount > MAX_V2BOX_CONFIGS ? ` (showing first ${MAX_V2BOX_CONFIGS} of ${sourceListCount})` : "";
-    setStatus(`Generated ${entries.length} proxy outbounds and ${lastV2boxConfigs.length} independent V2Box configs from list.json${capped}.`, "success");
+    setStatus(`Generated ${entries.length} proxy outbounds, advanced FinalMask JSON, and ${lastV2boxConfigs.length} independent V2Box configs from list.json${capped}.`, "success");
   } catch (error) {
     lastConfig = null;
-    lastV2boxConfigs = [];
     lastAdvancedConfig = null;
+    lastV2boxConfigs = [];
     renderAdvancedConfig();
     renderV2boxConfigs();
     setStatus(error instanceof Error ? error.message : "Invalid input.", "error");
@@ -795,7 +811,7 @@ function downloadJson() {
 
 if (els.generate) els.generate.addEventListener("click", () => { void generate(); });
 if (els.copy) els.copy.addEventListener("click", copyJson);
-if (els.advancedCopy) els.advancedCopy.addEventListener("click", copyAdvancedConfig);
+if (els.advancedCopy) els.advancedCopy.addEventListener("click", copyAdvancedJson);
 if (els.download) els.download.addEventListener("click", downloadJson);
 if (els.v2boxConfigs) {
   els.v2boxConfigs.addEventListener("click", (event) => {
