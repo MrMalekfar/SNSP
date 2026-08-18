@@ -4,7 +4,7 @@ const ADVANCED_ADDRESS_SOURCE = 'https://raw.githubusercontent.com/MrMalekfar/Li
 let sourceListCount = 0;
 
 const sampleVless =
-  "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
+  "vless://d72bc3eb-755a-415d-9999-08bf5987ccf2@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=WORKERs.dEV#1%20-%F0%9F%8F%85";
 
 function $(id) {
   return document.getElementById(id);
