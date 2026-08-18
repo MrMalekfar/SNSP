@@ -517,7 +517,7 @@ function buildSingleV2boxConfig(parsed, entry, index) {
         statsOutboundDownlink: true
       }
     },
-    remarks: "EpoVpn", //parsed.remark,
+    remarks: "EpoVpn Sni_Spoof V2box_s", //parsed.remark,
     routing: buildSingleRouting(),
     stats: {}
   };
@@ -670,7 +670,7 @@ function buildConfig(parsed, listEntries) {
         statsOutboundDownlink: true
       }
     },
-    remarks: "EpoVpn", //parsed.remark,
+    remarks: "EpoVpn Sni_Spoof V2box_m", //parsed.remark,
     routing: {
       // Preserve domain-based routing for the first match; do not resolve domains to IPs
       // merely to perform a second routing pass.
