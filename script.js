@@ -48,7 +48,7 @@ let lastV2boxConfigs = [];
 
 const ADVANCED_FINGERPRINT = "unsafe";
 const ADVANCED_CIPHER_SUITES =
-  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:" +
+  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA384:" +
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:" +
   "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
   "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:" +
@@ -698,48 +698,110 @@ function buildAdvancedConfig(parsed, listEntries) {
   if (parsed.security !== "tls") {
     throw new Error("The advanced fingerprint + fragment + cipherSuites config requires security=tls.");
   }
+  if (!Array.isArray(listEntries) || !listEntries.length) {
+    throw new Error("The advanced config requires at least one list entry.");
+  }
 
-  // IMPORTANT: The advanced box is intentionally a superset of the user's
-  // reference configuration. It starts from the full generated config so
-  // burstObservatory, sniSpoof, DNS, routing, policy, and every other field
-  // are retained, then applies only the advanced TLS/FinalMask additions.
-  const config = JSON.parse(JSON.stringify(buildConfig(parsed, listEntries)));
+  // This config deliberately follows the supplied FinalMask example instead of
+  // cloning the normal generator. It has exactly one VLESS outbound, with no
+  // burstObservatory and no sniSpoof blocks.
+  const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
+  const proxyPort = numberValueOf(els.proxyPort, 41105);
+  const firstEntry = listEntries[0];
 
-  // Keep these reference-config features explicitly present in the Advanced box.
-  // This also protects them if buildConfig is refactored later.
-  config.burstObservatory = JSON.parse(JSON.stringify(config.burstObservatory));
-
-  for (const outbound of config.outbounds ?? []) {
-    if (outbound.protocol !== "vless") continue;
-
-    // Reference-config feature: SNI/IP spoofing lives on the VLESS outbound,
-    // outside streamSettings.
-    if (!outbound.sniSpoof) {
-      throw new Error("Advanced config: sniSpoof is missing from a VLESS outbound.");
+  return {
+    dns: {
+      hosts: staticDnsHosts,
+      servers: [
+        "1.1.1.1",
+        {
+          address: "223.5.5.5",
+          domains: [],
+          skipFallback: true,
+          tag: "domestic-dns0"
+        }
+      ],
+      tag: "dns-module"
+    },
+    inbounds: [
+      {
+        listen: "127.0.0.1",
+        port: 10808,
+        protocol: "socks",
+        settings: {
+          auth: "noauth",
+          udp: true,
+          userLevel: 8
+        },
+        sniffing: {
+          destOverride: ["http", "tls"],
+          enabled: true,
+          routeOnly: false
+        },
+        tag: "socks"
+      }
+    ],
+    log: {
+      loglevel: valueOf(els.logLevel, "warning")
+    },
+    outbounds: [
+      {
+        mux: {
+          concurrency: -1,
+          enabled: false
+        },
+        protocol: "vless",
+        settings: {
+          vnext: [
+            {
+              address: proxyAddress,
+              port: proxyPort,
+              users: [
+                {
+                  encryption: parsed.encryption || "none",
+                  ...(parsed.flow ? { flow: parsed.flow } : {}),
+                  id: parsed.uuid,
+                  level: 8
+                }
+              ]
+            }
+          ]
+        },
+        streamSettings: {
+          network: parsed.transport,
+          security: "tls",
+          tlsSettings: {
+            allowInsecure: false,
+            alpn: ["http/1.1"],
+            fingerprint: ADVANCED_FINGERPRINT,
+            serverName: parsed.sni || firstEntry.fakeSni,
+            cipherSuites: ADVANCED_CIPHER_SUITES,
+            show: false
+          },
+          ...(parsed.transport === "ws" ? {
+            wsSettings: {
+              headers: {
+                Host: parsed.wsHost || parsed.sni || firstEntry.fakeSni
+              },
+              path: parsed.wsPath
+            }
+          } : {}),
+          finalmask: JSON.parse(JSON.stringify(ADVANCED_FINALMASK))
+        },
+        tag: "AutoOut"
+      }
+    ],
+    remarks: parsed.remark,
+    routing: {
+      domainStrategy: "IfIpNonMatch",
+      rules: [
+        {
+          outboundTag: "AutoOut"
+        }
+      ]
     }
-
-    const stream = outbound.streamSettings ?? (outbound.streamSettings = {});
-    stream.security = "tls";
-
-    const tlsSettings = stream.tlsSettings ?? (stream.tlsSettings = {});
-    tlsSettings.allowInsecure = false;
-    tlsSettings.alpn = ["http/1.1"];
-    tlsSettings.fingerprint = ADVANCED_FINGERPRINT;
-    tlsSettings.serverName = parsed.sni;
-    tlsSettings.cipherSuites = ADVANCED_CIPHER_SUITES;
-    tlsSettings.show = false;
-
-    // Exact FinalMask pattern from the supplied reference config.
-    stream.finalmask = JSON.parse(JSON.stringify(ADVANCED_FINALMASK));
-  }
-
-  if (!config.burstObservatory) {
-    throw new Error("Advanced config: burstObservatory is missing from the generated config.");
-  }
-
-  return config;
+  };
 }
-
 function renderAdvancedConfig() {
   if (!els.advancedOutput) return;
 
