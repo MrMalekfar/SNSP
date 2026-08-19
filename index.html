@@ -26,10 +26,10 @@
         <span class="step-number">01</span>
         <div>
           <div class="step-title">Start with a VLESS link</div>
-          <div class="step-copy">Paste a <code>vless://</code> link to parse its connection settings.</div>
+          <div class="step-copy">Paste a <code>vless://</code> link or an HTTP(S) subscription URL. For subscriptions, the first VLESS entry is used as the source profile.</div>
         </div>
       </div>
-      <label for="vlessInput">VLESS URL</label>
+      <label for="vlessInput">VLESS URL or Subscription URL</label>
       <textarea id="vlessInput" rows="2" spellcheck="false" placeholder="vless://UUID@host:443?type=ws&security=tls&path=%2F...&host=example.com&sni=example.com#Remark"></textarea>
       <div class="row">
         <span id="status" class="status" aria-live="polite"></span>
@@ -146,7 +146,7 @@
                 </label>
                 <label>
                   Interval
-                  <input id="observatoryInterval" value="5m" />
+                  <input id="observatoryInterval" value="20m" />
                 </label>
                 <label>
                   Sampling
@@ -195,7 +195,7 @@
           </div>
         </div>
         <pre id="output" aria-label="Generated JSON"><code>{
-  "message": "Paste a VLESS link, then generate the configurations."
+  "message": "Paste a VLESS link or subscription URL, then generate the configurations."
 }</code></pre>
       </div>
 
@@ -211,7 +211,7 @@
           </div>
         </div>
         <pre id="advancedOutput" aria-label="Advanced Xray JSON"><code>{
-  "message": "Paste a VLESS link, then generate the configurations."
+  "message": "Paste a VLESS link or subscription URL, then generate the configurations."
 }</code></pre>
       </div>
 

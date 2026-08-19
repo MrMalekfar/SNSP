@@ -4,7 +4,7 @@ const ADVANCED_ADDRESS_SOURCE = 'https://raw.githubusercontent.com/MrMalekfar/Li
 let sourceListCount = 0;
 
 const sampleVless =
-  "vless://d72bc3eb-755a-415d-9999-08bf5987ccf2@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=WORKERs.dEV#1%20-%F0%9F%8F%85";
+  "vless://d8c2de37-2ca6-4a64-a2bf-205999996350@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=TEST1.talaEibala.WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=TEST1.talaEibala.WORKERs.dEV#1%20-%F0%9F%8F%85TEST1";
 
 function $(id) {
   return document.getElementById(id);
@@ -185,6 +185,64 @@ function escapeHtml(text) {
   }[char]));
 }
 
+async function resolveVlessInput(raw) {
+  const value = String(raw ?? "").trim();
+  if (!value) {
+    throw new Error("Paste a VLESS link or subscription URL to continue.");
+  }
+
+  if (value.toLowerCase().startsWith("vless://")) {
+    return {
+      sourceType: "vless",
+      sourceUrl: null,
+      vless: value,
+      subscriptionCount: 1
+    };
+  }
+
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error("Input must be a VLESS link or an HTTP(S) subscription URL.");
+  }
+
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("The subscription URL is not valid.");
+  }
+
+  let response;
+  try {
+    response = await fetch(`${url.toString()}${url.search ? "&" : "?"}v=${Date.now()}`, {
+      method: "GET",
+      cache: "no-store"
+    });
+  } catch {
+    throw new Error("Could not fetch the subscription. Check the URL or the server's CORS policy.");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Subscription request failed (HTTP ${response.status}).`);
+  }
+
+  const text = await response.text();
+  const vlessLinks = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^vless:\/\//i.test(line));
+
+  if (!vlessLinks.length) {
+    throw new Error("The subscription did not contain any VLESS links.");
+  }
+
+  return {
+    sourceType: "subscription",
+    sourceUrl: url.toString(),
+    vless: vlessLinks[0],
+    subscriptionCount: vlessLinks.length
+  };
+}
+
 function parseVless(raw) {
   const value = raw.trim();
   if (!value) throw new Error("Paste a VLESS link to continue.");
@@ -272,7 +330,7 @@ function setDetectedFields(parsed) {
     sni: parsed.sni,
     wsHost: parsed.wsHost,
     wsPath: parsed.wsPath,
-    remark: "EpoVpn" || parsed.remark  
+    remark: parsed.remark || ""
   };
 
   Object.entries(mapping).forEach(([field, value]) => {
@@ -398,7 +456,7 @@ function buildOutbound(parsed, override, index) {
       security: parsed.security,
       tlsSettings: {
         allowInsecure: parsed.allowInsecure,
-        alpn: ["http/1.1"], //...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
+        ...(parsed.alpn.length ? { alpn: parsed.alpn } : {}),
         ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
         serverName: parsed.sni,
         show: false
@@ -517,7 +575,7 @@ function buildSingleV2boxConfig(parsed, entry, index) {
         statsOutboundDownlink: true
       }
     },
-    remarks: "EpoVpn Sni_Spoof V2box_s", //parsed.remark,
+    remarks: parsed.remark,
     routing: buildSingleRouting(),
     stats: {}
   };
@@ -670,7 +728,7 @@ function buildConfig(parsed, listEntries) {
         statsOutboundDownlink: true
       }
     },
-    remarks: "EpoVpn Sni_Spoof V2box_m", //parsed.remark,
+    remarks: parsed.remark,
     routing: {
       // Preserve domain-based routing for the first match; do not resolve domains to IPs
       // merely to perform a second routing pass.
@@ -829,7 +887,7 @@ async function buildAdvancedConfig(parsed) {
       security: "tls",
       tlsSettings: {
         allowInsecure: false,
-        alpn: ["http/1.1"],//parsed.alpn.length ? parsed.alpn : ["http/1.1"],
+        alpn: parsed.alpn.length ? parsed.alpn : ["http/1.1"],
         fingerprint: ADVANCED_FINGERPRINT,
         serverName: parsed.sni,
         cipherSuites: ADVANCED_CIPHER_SUITES,
@@ -919,7 +977,7 @@ async function buildAdvancedConfig(parsed) {
         statsOutboundDownlink: true
       }
     },
-    remarks: "EpoVpn Advanced", //parsed.remark,
+    remarks: parsed.remark,
     routing: {
       domainStrategy: "IPIfNonMatch",
       rules: [
@@ -1021,7 +1079,7 @@ function renderAdvancedConfig() {
   if (!els.advancedOutput) return;
 
   const config = lastAdvancedConfig ?? {
-    message: "Paste a VLESS link, then generate the configurations."
+    message: "Paste a VLESS link or subscription URL, then generate the configurations."
   };
 
   els.advancedOutput.innerHTML = `<code>${escapeHtml(JSON.stringify(config, null, 2))}</code>`;
@@ -1047,7 +1105,8 @@ async function generate() {
     await loadSniList();
     renderOutboundRows();
     const rawInput = valueOf(els.input);
-    const parsedBase = parseVless(rawInput);
+    const resolved = await resolveVlessInput(rawInput);
+    const parsedBase = parseVless(resolved.vless);
     const parsed = rawInput === generate._lastInput ? getEditedParsedFields(parsedBase) : parsedBase;
     const entries = getListDrivenOverrides();
     generate._lastInput = rawInput;
@@ -1064,7 +1123,10 @@ async function generate() {
     console.info("Generated outbound entries:", entries);
     console.info("Generated advanced AutoOut addresses:", advancedConfig.outbounds.slice(0, ADVANCED_OUTBOUND_COUNT).map((outbound) => outbound.settings.vnext[0].address));
     const capped = sourceListCount > MAX_V2BOX_CONFIGS ? ` (showing first ${MAX_V2BOX_CONFIGS} of ${sourceListCount})` : "";
-    setStatus(`Generated ${entries.length} outbound entries, an advanced Xray profile, and ${lastV2boxConfigs.length} V2Box profiles from list.json${capped}.`, "success");
+    const inputSummary = resolved.sourceType === "subscription"
+      ? `subscription resolved to the first of ${resolved.subscriptionCount} VLESS links`
+      : "VLESS link parsed directly";
+    setStatus(`Generated ${entries.length} outbound entries, an advanced Xray profile, and ${lastV2boxConfigs.length} V2Box profiles; ${inputSummary}.${capped}`, "success");
   } catch (error) {
     lastConfig = null;
     lastAdvancedConfig = null;
