@@ -416,25 +416,64 @@ function buildOutbound(parsed, override, index) {
 
 function buildSingleRouting() {
   return {
-    domainStrategy: "AsIs",
-    rules: [
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
       {
-        ip: ["8.8.8.8"],
-        outboundTag: "direct",
-        port: "53",
-        type: "field"
+        "ip": ["8.8.8.8","8.8.4.4","2001:4860:4860::8888"],
+        "outboundTag": "proxy",
+        "port": "53",
+        "type": "field"
       },
       {
-        ip: ["1.1.1.1"],
-        outboundTag: "proxy",
-        port: "53",
-        type: "field"
+        "ip": ["2620:119:35::35"],
+        "outboundTag": "direct",
+        "port": "53",
+        "type": "field"
       },
       {
-        ip: ["223.5.5.5"],
-        outboundTag: "direct",
-        port: "53",
-        type: "field"
+        "outboundTag": "block",
+        "port": "443",
+        "network": "udp",
+        "type": "field"
+      },
+      {
+        "outboundTag": "block",
+        "domain": ["geosite:category-ads-all"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "block",
+        "ip": ["10.10.34.0/24"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "direct",
+        "ip": ["geoip:private"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "direct",
+        "domain": ["geosite:private"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "direct",
+        "ip": ["geoip:ir"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "direct",
+        "domain": ["domain:.ir","geosite:category-ir"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "direct",
+        "protocol": ["bittorrent"],
+        "type": "field"
+      },
+      {
+        "outboundTag": "proxy",
+        "port": "0-65535"
       }
     ]
   };
