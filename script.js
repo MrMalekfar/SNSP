@@ -477,7 +477,7 @@ function buildSingleRouting() {
       }
     ]
   };
-}
+},
 
 function buildSingleV2boxConfig(parsed, entry, index) {
   const proxyAddress = valueOf(els.proxyAddress, "127.0.0.1").trim();
