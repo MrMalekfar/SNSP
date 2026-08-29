@@ -556,7 +556,7 @@ function buildSingleV2boxConfig(parsed, entry, index) {
         statsOutboundDownlink: true
       }
     },
-    remarks: "EpoVpn Sni_Spoof V2box_s", //parsed.remark,
+    remarks: `${index + 1} - EpoVpn Sni_Spoof V2box_s`, //parsed.remark,
     routing: buildSingleRouting(),
     stats: {}
   };
