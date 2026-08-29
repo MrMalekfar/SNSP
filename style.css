@@ -264,7 +264,6 @@ button:active {
 }
 
 .output-card pre {
-  max-height: 620px;
   margin: 16px 0 0;
   overflow: auto;
   padding: 18px;
@@ -490,10 +489,6 @@ footer {
 
 .advanced-output-card {
   margin-top: 18px;
-}
-
-.advanced-output-card pre {
-  max-height: 720px;
 }
 
 @media (max-width: 560px) {
@@ -951,20 +946,11 @@ body {
 }
 
 .output-card pre {
-  height: 320px;
-  min-height: 320px;
-  max-height: 420px;
   margin-top: 14px;
   padding: 16px;
   font-size: 0.78rem;
   line-height: 1.55;
   scrollbar-color: #334155 transparent;
-}
-
-.advanced-output-card pre {
-  height: 320px;
-  min-height: 320px;
-  max-height: 420px;
 }
 
 .v2box-output-card .section-head {
