@@ -1460,3 +1460,13 @@ select:focus-visible {
     padding: 10px;
   }
 }
+/* FINAL FIX — force 2 lines everywhere */
+.output-card pre,
+.advanced-output-card pre,
+.v2box-config-json {
+  line-height: 1.4;
+  height: calc(1.4em * 2 + 14px) !important;
+  max-height: calc(1.4em * 2 + 14px) !important;
+  min-height: unset !important;
+  overflow: auto;
+}
