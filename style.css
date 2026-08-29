@@ -512,9 +512,10 @@ footer {
 .output-grid pre,
 .v2box-config-json,
 .advanced-output-card pre {
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
+  line-height: 1.4;
+  height: calc(1.4em * 2 + 16px); /* دقیقاً 2 خط */
+  min-height: unset;
+  max-height: unset;
   overflow: auto;
 }
 
