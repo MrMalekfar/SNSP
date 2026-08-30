@@ -484,7 +484,7 @@ function buildDnsConfig() {
 function buildSocksInbounds() {
   return [
     {
-      listen: "127.0.0.1",
+      //listen: "127.0.0.1",
       port: 10808,
       protocol: "socks",
       settings: {
@@ -493,7 +493,7 @@ function buildSocksInbounds() {
         userLevel: 8
       },
       sniffing: {
-        destOverride: ["http", "tls"],
+        destOverride: ["http", "tls", "quic"],
         enabled: true,
         routeOnly: false
       },
