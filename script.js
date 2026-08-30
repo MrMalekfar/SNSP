@@ -484,7 +484,7 @@ function buildDnsConfig() {
 function buildSocksInbounds() {
   return [
     {
-      //listen: "127.0.0.1",
+      listen: "127.0.0.1",
       port: 10808,
       protocol: "socks",
       settings: {
