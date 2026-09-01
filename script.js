@@ -11,7 +11,7 @@ const DEFAULTS = Object.freeze({
   proxyPort: 41105,
   logLevel: "warning",
   observatorySelector: "AutoOut_",
-  observatoryDestination: "https://connectivitycheck.gstatic.com/generate_204",
+  observatoryDestination: "http://edge.microsoft.com/captiveportal/generate_204",
   observatoryConnectivity: "",
   observatoryInterval: "5m",
   observatorySampling: 3,
