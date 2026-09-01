@@ -154,7 +154,7 @@
                     </label>
                     <label>
                       Destination
-                      <input id="observatoryDestination" value="http://edge.microsoft.com/captiveportal/generate_204" />
+                      <input id="observatoryDestination" value="https://connectivitycheck.gstatic.com/generate_204" />
                     </label>
                     <label>
                       Connectivity
@@ -220,7 +220,7 @@
             <div>
               <div class="eyebrow output-eyebrow">ADVANCED PROFILE</div>
               <h2>Advanced Xray profile</h2>
-              <p>A 20-outbound Advanced Xray profile. Each AutoOut entry shares the same transport settings and uses a randomized address from the GitHub merged list.</p>
+              <p>A 20-outbound Advanced Xray V2 profile with the current TLS, FinalMask, and least-load settings. Each AutoOut entry uses a randomized address from the GitHub merged list.</p>
             </div>
             <div class="actions">
               <button id="advancedCopy" class="secondary" type="button" disabled>Copy configuration</button>
@@ -251,6 +251,6 @@
     </footer>
   </main>
 
-  <script src="./script.js?v=20260829-refactor-1"></script>
+  <script src="./script.js?v=20260901-v2-1"></script>
 </body>
 </html>

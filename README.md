@@ -15,8 +15,11 @@ The primary workflow stays focused on the VLESS link. Optional configuration con
 ### Generated Xray configuration
 A complete multi-outbound Xray configuration built from the current VLESS input, the template settings, and the outbound sources in `list.json`.
 
-### Advanced Xray profile
-A 20-outbound profile generated only for TLS VLESS links. Each outbound uses the same UUID, port, TLS, transport, Fragment, and cipher-suite settings; only the `address` changes. Addresses are selected randomly, without replacement, from the `merged` array in `https://github.com/MrMalekfar/Lists/blob/main/merged_lists.json`. The profile uses Burst Observatory plus a `leastLoad` balancer tagged `all`, matching the main Generated Xray routing model.
+### Advanced Xray V2 profile
+
+A 20-outbound profile generated only for TLS VLESS links. Each outbound uses the same UUID, port, WebSocket transport, TLS 1.2–1.3 range, Chrome ClientHello fingerprint, controlled `tlshello` FinalMask fragmentation, and the same routing policy; only the `address` changes. Addresses are selected randomly, without replacement, from the `merged` array in `https://github.com/MrMalekfar/Lists/blob/main/merged_lists.json`. The profile uses Burst Observatory plus the current `leastLoad` strategy with `expected`, `maxRTT`, `tolerance`, and `baselines` settings.
+
+The main multi-outbound SNI-spoof outputs and individual V2Box SNI-spoof profiles use the same V2 TLS/FinalMask baseline while preserving the project-specific `sniSpoof` object.
 
 ### V2Box profiles
 Independent JSON profiles are presented one at a time so each profile can be copied or imported without depending on a combined array wrapper. The UI shows up to 10 profiles.
@@ -29,7 +32,7 @@ The optional **Review & configuration** workspace contains:
 - Local proxy defaults
 - Log level
 - Outbound sources loaded from `list.json`
-- Burst Observatory settings
+- Burst Observatory settings and current V2 transport defaults
 - Advanced Xray address generation from the GitHub `merged` list
 
 These controls are hidden by default to keep the main workflow compact.

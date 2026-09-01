@@ -11,7 +11,7 @@ const DEFAULTS = Object.freeze({
   proxyPort: 41105,
   logLevel: "warning",
   observatorySelector: "AutoOut_",
-  observatoryDestination: "http://edge.microsoft.com/captiveportal/generate_204",
+  observatoryDestination: "https://connectivitycheck.gstatic.com/generate_204",
   observatoryConnectivity: "",
   observatoryInterval: "5m",
   observatorySampling: 3,
@@ -22,14 +22,13 @@ const DEFAULTS = Object.freeze({
 const SAMPLE_VLESS =
   "vless://d72bc3eb-755a-415d-9999-08bf5987ccf2@188.114.98.224:443?path=%2FUrn8f6B57GWK_g_1%3Fed%3D2560&security=tls&alpn=h3&encryption=none&insecure=0&host=WORKERs.dEV&fp=chrome&type=ws&allowInsecure=0&sni=WORKERs.dEV#1%20-%F0%9F%8F%85";
 
-const ADVANCED_FINGERPRINT = "unsafe";
+// Current Xray TLS baseline used by the V2 profiles.
+// Keep cipherSuites limited to TLS 1.2-era suites; TLS 1.3 suites are selected automatically.
+const ADVANCED_FINGERPRINT = "chrome";
 const ADVANCED_CIPHER_SUITES =
-  "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:" +
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:" +
   "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
-  "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:" +
-  "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:" +
-  "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
+  "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256";
 
 const ADVANCED_FINALMASK = Object.freeze({
   tcp: [
@@ -37,18 +36,9 @@ const ADVANCED_FINALMASK = Object.freeze({
       type: "fragment",
       settings: {
         packets: "tlshello",
-        lengths: ["5", "94", "1"],
-        delays: ["0"],
-        maxSplit: "0"
-      }
-    },
-    {
-      type: "fragment",
-      settings: {
-        packets: "1-1",
-        lengths: ["109", "1"],
-        delays: ["1"],
-        maxSplit: "355"
+        lengths: ["5-12", "30-60", "1-3"],
+        delays: ["0-1", "1-3"],
+        maxSplit: "3-6"
       }
     }
   ]
@@ -472,11 +462,19 @@ function buildDnsConfig() {
       "1.1.1.1",
       {
         address: "223.5.5.5",
-        domains: [],
+        domains: [
+          "domain:.ir",
+          "geosite:category-ir"
+        ],
         skipFallback: true,
         tag: "domestic-dns0"
       }
     ],
+    queryStrategy: "UseIP",
+    disableCache: false,
+    serveStale: true,
+    serveExpiredTTL: 86400,
+    enableParallelQuery: false,
     tag: "dns-module"
   };
 }
@@ -671,7 +669,13 @@ function buildBalancedRouting() {
         tag: "all",
         selector: ["AutoOut_"],
         strategy: {
-          type: "leastLoad"
+          type: "leastLoad",
+          settings: {
+            expected: 2,
+            maxRTT: "1s",
+            tolerance: 0.1,
+            baselines: ["1s"]
+          }
         },
         fallbackTag: "AutoOut_1"
       }
@@ -746,6 +750,7 @@ function buildSingleRouting() {
 
 function buildOutbound(parsed, override) {
   const proxyPort = numberValueOf(els.proxyPort, DEFAULTS.proxyPort);
+  const isTls = parsed.security === "tls";
 
   return {
     mux: {
@@ -778,13 +783,18 @@ function buildOutbound(parsed, override) {
     streamSettings: {
       network: parsed.transport,
       security: parsed.security,
-      tlsSettings: {
-        allowInsecure: parsed.allowInsecure,
-        alpn: ["http/1.1"],
-        ...(parsed.fingerprint ? { fingerprint: parsed.fingerprint } : {}),
-        serverName: parsed.sni,
-        show: false
-      },
+      ...(isTls
+        ? {
+            tlsSettings: {
+              minVersion: "1.2",
+              maxVersion: "1.3",
+              fingerprint: ADVANCED_FINGERPRINT,
+              cipherSuites: ADVANCED_CIPHER_SUITES,
+              serverName: parsed.sni,
+              show: false
+            }
+          }
+        : {}),
       ...(parsed.transport === "ws"
         ? {
             wsSettings: {
@@ -792,7 +802,8 @@ function buildOutbound(parsed, override) {
               path: parsed.wsPath
             }
           }
-        : {})
+        : {}),
+      ...(isTls ? { finalmask: cloneAdvancedFinalmask() } : {})
     },
     tag: override.tag
   };
@@ -814,7 +825,7 @@ function buildSingleV2boxConfig(parsed, entry, index) {
       buildBlockOutbound()
     ],
     policy: buildPolicy(),
-    remarks: `${index + 1} - EpoVpn Sni_Spoof V2box_s`,
+    remarks: `${index + 1} - EpoVpn Sni_Spoof V2`,
     routing: buildSingleRouting(),
     stats: {}
   };
@@ -856,7 +867,7 @@ function buildConfig(parsed, listEntries) {
       buildBlockOutbound()
     ],
     policy: buildPolicy(),
-    remarks: "EpoVpn Sni_Spoof V2box_m",
+    remarks: "EpoVpn Sni_Spoof V2",
     routing: buildBalancedRouting(),
     stats: {}
   };
@@ -893,7 +904,8 @@ function buildAdvancedOutbound(parsed, address, index) {
       network: parsed.transport,
       security: "tls",
       tlsSettings: {
-        allowInsecure: false,
+        minVersion: "1.2",
+        maxVersion: "1.3",
         alpn: ["http/1.1"],
         fingerprint: ADVANCED_FINGERPRINT,
         serverName: parsed.sni,
@@ -936,7 +948,7 @@ async function buildAdvancedConfig(parsed) {
       buildBlockOutbound()
     ],
     policy: buildPolicy(),
-    remarks: "EpoVpn Advanced",
+    remarks: "EpoVpn Advanced V2",
     routing: buildBalancedRouting(),
     stats: {}
   };
