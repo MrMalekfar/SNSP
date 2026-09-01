@@ -24,7 +24,7 @@ const SAMPLE_VLESS =
 
 // Current Xray TLS baseline used by the V2 profiles.
 // Keep cipherSuites limited to TLS 1.2-era suites; TLS 1.3 suites are selected automatically.
-const ADVANCED_FINGERPRINT = "chrome";
+const ADVANCED_FINGERPRINT = "unsafe";
 const ADVANCED_CIPHER_SUITES =
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:" +
   "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
@@ -36,14 +36,22 @@ const ADVANCED_FINALMASK = Object.freeze({
       type: "fragment",
       settings: {
         packets: "tlshello",
-        lengths: ["5-12", "30-60", "1-3"],
-        delays: ["0-1", "1-3"],
-        maxSplit: "3-6"
+        lengths: ["5", "94", "1"],
+        delays: ["0"],
+        maxSplit: "0"
+      }
+    },
+    {
+      type: "fragment",
+      settings: {
+        packets: "1-1",
+        lengths: ["109", "1"],
+        delays: ["1"],
+        maxSplit: "355"
       }
     }
   ]
 });
-
 const STATIC_DNS_HOSTS = Object.freeze({
   "domain:googleapis.cn": "googleapis.com",
   "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1", "2400:3200:baba::1"],
