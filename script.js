@@ -579,7 +579,7 @@ function buildBurstObservatory(settings) {
   return {
     subjectSelector: [settings.selector],
     pingConfig: {
-      destination: DEFAULTS.observatoryDestination,
+      destination: settings.destination,
       connectivity: settings.connectivity,
       interval: settings.interval,
       sampling: settings.sampling,
