@@ -34,5 +34,9 @@
   {
     "ip": "104.19.144.45",
     "sni": "v16m-default.akamaized.net"
+  },
+  {
+    "ip": "199.181.197.1",
+    "sni": "chatgpt.com"
   }
 ]
