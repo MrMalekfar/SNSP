@@ -579,7 +579,7 @@ function buildBurstObservatory(settings) {
   return {
     subjectSelector: [settings.selector],
     pingConfig: {
-      destination: settings.destination,
+      destination: DEFAULTS.observatoryDestination,
       connectivity: settings.connectivity,
       interval: settings.interval,
       sampling: settings.sampling,
@@ -677,13 +677,13 @@ function buildBalancedRouting() {
         tag: "all",
         selector: ["AutoOut_"],
         strategy: {
-          type: "leastLoad",
+          type: "leastLoad"/*,
           settings: {
             expected: 2,
             maxRTT: "1s",
             tolerance: 0.1,
             baselines: ["1s"]
-          }
+          }*/
         },
         fallbackTag: "AutoOut_1"
       }
